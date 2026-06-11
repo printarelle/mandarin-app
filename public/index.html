@@ -268,6 +268,22 @@ async function speak(chinese,pinyin){
   }catch(e){}
   if(pinyin)toneSound(pinyin);
 }
+// Speak any language via the TTS proxy (lang defaults to zh-CN)
+async function speakLang(text, lang='zh-CN', pinyin=null){
+  const ctx=getAC();
+  try{ctx.resume();}catch(e){}
+  try{
+    const res=await fetch(`/api/tts?text=${encodeURIComponent(text)}&lang=${lang}`);
+    if(!res.ok)throw new Error();
+    const buf=await res.arrayBuffer();
+    const audio=await new Promise((resolve,rej)=>ctx.decodeAudioData(buf,resolve,rej));
+    const src=ctx.createBufferSource();
+    src.buffer=audio;src.connect(ctx.destination);src.start(0);
+    return;
+  }catch(e){}
+  // Chinese fallback only — tone synthesis
+  if(lang==='zh-CN'&&pinyin)toneSound(pinyin);
+}
 // Unlock on first touch
 document.addEventListener('touchstart',()=>{try{getAC().resume();}catch(e){}},{once:true,passive:true});
 
@@ -689,14 +705,22 @@ function TranslateView(){
           <div style={{fontFamily:UI,fontSize:18,color:C.vermilion,fontWeight:700,marginTop:4}}>{result.pinyin}</div>
           <ToneBar pinyin={result.pinyin}/>
         </div>
-        <SpeakBtn chinese={result.chinese} pinyin={result.pinyin} big/>
+        <button onClick={()=>speakLang(result.chinese,'zh-CN',result.pinyin)} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:"50%",width:46,height:46,fontSize:20,cursor:"pointer",flexShrink:0}} title="Hear Chinese">🔊</button>
       </div>
       {result.approx&&<div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,fontStyle:'italic'}}>🗣 sounds like: "{result.approx}"</div>}
-      <div style={{fontFamily:UI,fontSize:16,color:C.ink,fontWeight:700,borderTop:`1px solid ${C.line}`,paddingTop:10}}>{result.english}</div>
+      <div style={{borderTop:`1px solid ${C.line}`,paddingTop:10,display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+        <div style={{fontFamily:UI,fontSize:16,color:C.ink,fontWeight:700,flex:1}}>{result.english}</div>
+        <button onClick={()=>speakLang(result.english,'en')} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:"50%",width:46,height:46,fontSize:20,cursor:"pointer",flexShrink:0}} title="Hear English">🔊</button>
+      </div>
       {result.example_cn&&<div style={{background:C.paper,borderRadius:10,padding:12}}>
         <div style={{fontFamily:UI,fontSize:11,letterSpacing:1,color:C.inkSoft,marginBottom:4}}>EXAMPLE</div>
-        <div style={{fontFamily:HAN,fontWeight:700,fontSize:16,color:C.ink}}>{result.example_cn}</div>
-        <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,marginTop:2}}>{result.example_en}</div>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:HAN,fontWeight:700,fontSize:16,color:C.ink}}>{result.example_cn}</div>
+            <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,marginTop:2}}>{result.example_en}</div>
+          </div>
+          <button onClick={()=>speakLang(result.example_cn,'zh-CN')} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:"50%",width:36,height:36,fontSize:16,cursor:"pointer",flexShrink:0}}>🔊</button>
+        </div>
       </div>}
     </div>}
     {result?.error&&<div style={{background:"#FBF3E3",borderRadius:12,padding:14,fontFamily:UI,fontSize:13,color:C.ink}}>⚠️ {result.error}. Check your ANTHROPIC_API_KEY in Vercel settings.</div>}
