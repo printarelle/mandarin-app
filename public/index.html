@@ -681,8 +681,9 @@ function DecksView({state,setState}){
   const[open,setOpen]=useState(null),[session,setSession]=useState(null);
   if(session&&session!=="done")return <ReviewSession queue={session} state={state} setState={setState} onDone={()=>setSession("done")}/>;
   if(open){
-    const items=PHRASES.map((p,id)=>({...p,id})).filter(p=>p.d===open);
-    const deck=DECKS.find(d=>d.id===open);
+    const allPh=getAllPhrases(state);
+    const items=allPh.map((p,id)=>({...p,id})).filter(p=>p.d===open);
+    const deck=DECKS.find(d=>d.id===open)||{id:"custom",name:"Custom phrases",zh:"自定义",icon:"✨"};
     return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
       <button onClick={()=>setOpen(null)} style={{alignSelf:"flex-start",background:"none",border:"none",fontFamily:UI,fontWeight:700,color:C.vermilion,fontSize:15,cursor:"pointer",padding:0}}>← All decks</button>
       <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
@@ -690,7 +691,10 @@ function DecksView({state,setState}){
         <div style={{fontFamily:HAN,fontWeight:900,fontSize:24,color:C.ink}}>{deck.zh}</div>
         <div style={{fontFamily:UI,fontWeight:700,fontSize:15,color:C.inkSoft}}>{deck.name}</div>
       </div>
-      <Btn full bg={C.ink} color="#FFF8EE" border={false} onClick={()=>setSession(items.map(p=>({id:p.id})))}>Practise all {items.length} cards</Btn>
+      {items.length>0
+        ?<Btn full bg={C.ink} color="#FFF8EE" border={false} onClick={()=>setSession(items.map(p=>({id:p.id})))}>Practise all {items.length} cards</Btn>
+        :<div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,padding:"8px 0"}}>No phrases in this deck yet.</div>
+      }
       {items.map(p=>(<div key={p.id} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:10}}>
         <SpeakBtn chinese={p.c} pinyin={p.p}/>
         <div style={{flex:1}}>
