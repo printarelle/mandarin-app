@@ -5,67 +5,336 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>路上中文</title>
+<title>路上中文 · Mandarin for the Road</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700;900&family=Karla:wght@400;700&display=swap" rel="stylesheet">
-<style>*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}body{background:#F7F2E7;font-family:'Karla',sans-serif}button{cursor:pointer}</style>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+body{background:#F7F2E7;font-family:'Karla',sans-serif}
+button{cursor:pointer}
+@keyframes fall{0%{top:-60px;opacity:1;transform:rotate(0deg) scale(1)}100%{top:105vh;opacity:0;transform:rotate(720deg) scale(0.5)}}
+@keyframes pop{0%{transform:scale(0.5);opacity:0}60%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.pop{animation:pop 0.4s ease forwards}
+.slideUp{animation:slideUp 0.3s ease forwards}
+</style>
 </head>
 <body>
-<div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#6B6357">Loading...</div></div>
+<div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#6B6357;font-size:18px">Loading 路上中文...</div></div>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script type="text/babel" data-presets="react">
-const {useState,useEffect,useRef}=React;
-const C={paper:"#F7F2E7",card:"#FFFCF4",ink:"#2B2722",inkSoft:"#6B6357",vermilion:"#C8372D",vermilionDark:"#A02A22",jade:"#3E7C59",gold:"#B98A2F",line:"#E5DCC8"};
+const {useState,useEffect,useRef,useCallback}=React;
+const C={paper:"#F7F2E7",card:"#FFFCF4",ink:"#2B2722",inkSoft:"#6B6357",vermilion:"#C8372D",vermilionDark:"#A02A22",jade:"#3E7C59",gold:"#B98A2F",line:"#E5DCC8",sky:"#3A6B8A"};
 const HAN="'Noto Serif SC',serif",UI="'Karla',sans-serif";
-const store={get:k=>{try{const v=localStorage.getItem(k);return v?{value:v}:null;}catch(e){return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}}};
+
+// ── Storage ──────────────────────────────────────────────────────────
+const store={
+  get:k=>{try{const v=localStorage.getItem(k);return v?{value:v}:null;}catch(e){return null;}},
+  set:(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}}
+};
+
+// ── Phrase data ───────────────────────────────────────────────────────
 const INTERVALS=[0,1,3,7,14,30];
-const DECKS=[{id:"ess",name:"Essentials",zh:"基础"},{id:"food",name:"Food & Spice",zh:"吃饭"},{id:"trans",name:"Transport",zh:"交通"},{id:"hotel",name:"Hotel",zh:"酒店"},{id:"shop",name:"Shopping",zh:"买东西"},{id:"num",name:"Numbers",zh:"数字"},{id:"cd",name:"Chengdu",zh:"成都"},{id:"cq",name:"Chongqing",zh:"重庆"},{id:"xa",name:"Xi'an",zh:"西安"},{id:"emg",name:"Emergencies",zh:"紧急"}];
-const PHRASES=[
-{c:"你好",p:"nǐ hǎo",e:"Hello",d:"ess"},{c:"谢谢",p:"xièxie",e:"Thank you",d:"ess"},{c:"不好意思",p:"bù hǎo yìsi",e:"Excuse me",d:"ess"},{c:"请问",p:"qǐngwèn",e:"May I ask...",d:"ess"},{c:"我听不懂",p:"wǒ tīng bù dǒng",e:"I don't understand",d:"ess"},{c:"请说慢一点",p:"qǐng shuō màn yìdiǎn",e:"Please speak slower",d:"ess"},{c:"你会说英语吗",p:"nǐ huì shuō yīngyǔ ma",e:"Do you speak English?",d:"ess"},{c:"多少钱",p:"duōshao qián",e:"How much?",d:"ess"},{c:"我要这个",p:"wǒ yào zhège",e:"I want this one",d:"ess"},{c:"厕所在哪里",p:"cèsuǒ zài nǎlǐ",e:"Where is the toilet?",d:"ess"},{c:"没关系",p:"méi guānxi",e:"No problem",d:"ess"},{c:"对不起",p:"duìbuqǐ",e:"I'm sorry",d:"ess"},{c:"是",p:"shì",e:"Yes",d:"ess"},{c:"不是",p:"bú shì",e:"No",d:"ess"},{c:"好的",p:"hǎo de",e:"OK",d:"ess"},
-{c:"不要太辣",p:"bú yào tài là",e:"Not too spicy",d:"food"},{c:"微辣",p:"wēi là",e:"Mild spice",d:"food"},{c:"中辣",p:"zhōng là",e:"Medium spice",d:"food"},{c:"不辣",p:"bú là",e:"No spice",d:"food"},{c:"麻",p:"má",e:"Numbing pepper",d:"food"},{c:"火锅",p:"huǒguō",e:"Hotpot",d:"food"},{c:"鸳鸯锅",p:"yuānyāng guō",e:"Half-and-half hotpot",d:"food"},{c:"串串",p:"chuànchuàn",e:"Skewers",d:"food"},{c:"担担面",p:"dàndàn miàn",e:"Dan dan noodles",d:"food"},{c:"小面",p:"xiǎomiàn",e:"Chongqing noodles",d:"food"},{c:"一份",p:"yí fèn",e:"One portion",d:"food"},{c:"买单",p:"mǎidān",e:"The bill please",d:"food"},{c:"打包",p:"dǎbāo",e:"Takeaway",d:"food"},{c:"我不吃肉",p:"wǒ bù chī ròu",e:"I don't eat meat",d:"food"},{c:"好吃",p:"hǎochī",e:"Delicious",d:"food"},{c:"来一瓶水",p:"lái yì píng shuǐ",e:"A bottle of water",d:"food"},{c:"服务员",p:"fúwùyuán",e:"Waiter!",d:"food"},{c:"菜单",p:"càidān",e:"Menu",d:"food"},
-{c:"我要去",p:"wǒ yào qù",e:"I want to go to...",d:"trans"},{c:"请在这里停",p:"qǐng zài zhèlǐ tíng",e:"Please stop here",d:"trans"},{c:"地铁站在哪里",p:"dìtiě zhàn zài nǎlǐ",e:"Where is the metro?",d:"trans"},{c:"高铁",p:"gāotiě",e:"High-speed rail",d:"trans"},{c:"火车站",p:"huǒchē zhàn",e:"Train station",d:"trans"},{c:"机场",p:"jīchǎng",e:"Airport",d:"trans"},{c:"一张去西安的票",p:"yì zhāng qù Xī'ān de piào",e:"One ticket to Xi'an",d:"trans"},{c:"几点出发",p:"jǐ diǎn chūfā",e:"What time does it leave?",d:"trans"},{c:"出口",p:"chūkǒu",e:"Exit",d:"trans"},{c:"入口",p:"rùkǒu",e:"Entrance",d:"trans"},{c:"我在这里等你",p:"wǒ zài zhèlǐ děng nǐ",e:"Waiting here for you",d:"trans"},
-{c:"我有预订",p:"wǒ yǒu yùdìng",e:"I have a reservation",d:"hotel"},{c:"护照",p:"hùzhào",e:"Passport",d:"hotel"},{c:"退房",p:"tuìfáng",e:"Check out",d:"hotel"},{c:"行李寄存",p:"xíngli jìcún",e:"Luggage storage",d:"hotel"},{c:"WiFi密码是什么",p:"WiFi mìmǎ shì shénme",e:"WiFi password?",d:"hotel"},{c:"几楼",p:"jǐ lóu",e:"Which floor?",d:"hotel"},{c:"房间",p:"fángjiān",e:"Room",d:"hotel"},
-{c:"可以便宜一点吗",p:"kěyǐ piányi yìdiǎn ma",e:"Can you make it cheaper?",d:"shop"},{c:"太贵了",p:"tài guì le",e:"Too expensive",d:"shop"},{c:"可以用支付宝吗",p:"kěyǐ yòng Zhīfùbǎo ma",e:"Can I use Alipay?",d:"shop"},{c:"可以刷卡吗",p:"kěyǐ shuākǎ ma",e:"Can I pay by card?",d:"shop"},{c:"我看看",p:"wǒ kànkan",e:"Just looking",d:"shop"},{c:"块",p:"kuài",e:"Yuan (spoken)",d:"shop"},
-{c:"一",p:"yī",e:"1",d:"num"},{c:"二",p:"èr",e:"2",d:"num"},{c:"三",p:"sān",e:"3",d:"num"},{c:"四",p:"sì",e:"4",d:"num"},{c:"五",p:"wǔ",e:"5",d:"num"},{c:"六",p:"liù",e:"6",d:"num"},{c:"七",p:"qī",e:"7",d:"num"},{c:"八",p:"bā",e:"8",d:"num"},{c:"九",p:"jiǔ",e:"9",d:"num"},{c:"十",p:"shí",e:"10",d:"num"},{c:"百",p:"bǎi",e:"Hundred",d:"num"},{c:"二十五",p:"èrshíwǔ",e:"25",d:"num"},
-{c:"熊猫基地",p:"xióngmāo jīdì",e:"Panda Research Base",d:"cd"},{c:"宽窄巷子",p:"Kuānzhǎi Xiàngzi",e:"Kuanzhai Alley",d:"cd"},{c:"茶馆",p:"cháguǎn",e:"Teahouse",d:"cd"},{c:"人民公园",p:"Rénmín Gōngyuán",e:"People's Park",d:"cd"},
-{c:"洪崖洞",p:"Hóngyádòng",e:"Hongya Cave",d:"cq"},{c:"长江索道",p:"Chángjiāng suǒdào",e:"Yangtze cable car",d:"cq"},{c:"轻轨",p:"qīngguǐ",e:"Light rail",d:"cq"},{c:"解放碑",p:"Jiěfàngbēi",e:"Jiefangbei downtown",d:"cq"},
-{c:"兵马俑",p:"bīngmǎyǒng",e:"Terracotta Warriors",d:"xa"},{c:"回民街",p:"Huímín Jiē",e:"Muslim Quarter",d:"xa"},{c:"肉夹馍",p:"ròujiāmó",e:"Xi'an meat sandwich",d:"xa"},{c:"城墙",p:"chéngqiáng",e:"City wall",d:"xa"},{c:"凉皮",p:"liángpí",e:"Cold noodles",d:"xa"},
-{c:"救命",p:"jiùmìng",e:"Help!",d:"emg"},{c:"我需要医生",p:"wǒ xūyào yīshēng",e:"I need a doctor",d:"emg"},{c:"警察",p:"jǐngchá",e:"Police",d:"emg"},{c:"我迷路了",p:"wǒ mílù le",e:"I'm lost",d:"emg"}
+const DECKS=[
+  {id:"ess",name:"Essentials",zh:"基础",icon:"💬"},
+  {id:"food",name:"Food & Spice",zh:"吃饭",icon:"🍜"},
+  {id:"trans",name:"Transport",zh:"交通",icon:"🚆"},
+  {id:"hotel",name:"Hotel",zh:"酒店",icon:"🏨"},
+  {id:"shop",name:"Shopping",zh:"买东西",icon:"🛍️"},
+  {id:"col",name:"Colors",zh:"颜色",icon:"🎨"},
+  {id:"verb",name:"Verbs",zh:"动词",icon:"⚡"},
+  {id:"build",name:"Sentence Builders",zh:"造句",icon:"🧱"},
+  {id:"daily",name:"Daily Life",zh:"日常",icon:"☀️"},
+  {id:"num",name:"Numbers",zh:"数字",icon:"🔢"},
+  {id:"cd",name:"Chengdu",zh:"成都",icon:"🐼"},
+  {id:"cq",name:"Chongqing",zh:"重庆",icon:"🌉"},
+  {id:"xa",name:"Xi'an",zh:"西安",icon:"⚔️"},
+  {id:"emg",name:"Emergencies",zh:"紧急",icon:"🚨"},
 ];
-const TONE_ITEMS=[{c:"妈",p:"mā",t:1},{c:"麻",p:"má",t:2},{c:"马",p:"mǎ",t:3},{c:"骂",p:"mà",t:4},{c:"汤",p:"tāng",t:1},{c:"糖",p:"táng",t:2},{c:"躺",p:"tǎng",t:3},{c:"烫",p:"tàng",t:4},{c:"八",p:"bā",t:1},{c:"拔",p:"bá",t:2},{c:"把",p:"bǎ",t:3},{c:"爸",p:"bà",t:4},{c:"吃",p:"chī",t:1},{c:"茶",p:"chá",t:2},{c:"你",p:"nǐ",t:3},{c:"是",p:"shì",t:4},{c:"天",p:"tiān",t:1},{c:"钱",p:"qián",t:2},{c:"买",p:"mǎi",t:3},{c:"卖",p:"mài",t:4}];
-const SCENARIOS=[{id:"hotpot",name:"Hotpot restaurant",zh:"火锅店",role:"a friendly waiter in a Chengdu hotpot restaurant"},{id:"taxi",name:"Didi driver",zh:"出租车",role:"a chatty Didi taxi driver in Chongqing"},{id:"hotel",name:"Hotel check-in",zh:"酒店",role:"a hotel receptionist in Xi'an"},{id:"market",name:"Market bargaining",zh:"市场",role:"a souvenir stall owner at the Muslim Quarter in Xi'an"},{id:"train",name:"Train station",zh:"车站",role:"a ticket clerk at Chengdu East railway station"}];
+// approx = rough English sound-alike
+const PHRASES=[
+  // Essentials
+  {c:"你好",p:"nǐ hǎo",e:"Hello",d:"ess",approx:"nee how"},
+  {c:"谢谢",p:"xièxie",e:"Thank you",d:"ess",approx:"shyeh shyeh"},
+  {c:"不好意思",p:"bù hǎo yìsi",e:"Excuse me / sorry",d:"ess",approx:"boo how ee suh"},
+  {c:"请问",p:"qǐngwèn",e:"May I ask...",d:"ess",approx:"ching when"},
+  {c:"我听不懂",p:"wǒ tīng bù dǒng",e:"I don't understand",d:"ess",approx:"woh ting boo dong"},
+  {c:"请说慢一点",p:"qǐng shuō màn yìdiǎn",e:"Please speak slower",d:"ess",approx:"ching shwoh man ee dyen"},
+  {c:"你会说英语吗",p:"nǐ huì shuō yīngyǔ ma",e:"Do you speak English?",d:"ess"},
+  {c:"多少钱",p:"duōshao qián",e:"How much?",d:"ess",approx:"dwoh shao chyen"},
+  {c:"我要这个",p:"wǒ yào zhège",e:"I want this one",d:"ess",approx:"woh yow juh guh"},
+  {c:"厕所在哪里",p:"cèsuǒ zài nǎlǐ",e:"Where is the toilet?",d:"ess",approx:"tsuh swoh zye na lee"},
+  {c:"没关系",p:"méi guānxi",e:"No problem / it's fine",d:"ess",approx:"may gwan shee"},
+  {c:"对不起",p:"duìbuqǐ",e:"I'm sorry",d:"ess",approx:"dway boo chee"},
+  {c:"是",p:"shì",e:"Yes",d:"ess",approx:"shuh"},
+  {c:"不是",p:"bú shì",e:"No",d:"ess",approx:"boo shuh"},
+  {c:"好的",p:"hǎo de",e:"OK / sure",d:"ess",approx:"how duh"},
+  {c:"再见",p:"zàijiàn",e:"Goodbye",d:"ess",approx:"zye jyen"},
+  // Food
+  {c:"不要太辣",p:"bú yào tài là",e:"Not too spicy",d:"food",approx:"boo yow tie la"},
+  {c:"微辣",p:"wēi là",e:"Mild spice",d:"food",approx:"way la"},
+  {c:"中辣",p:"zhōng là",e:"Medium spice",d:"food",approx:"jong la"},
+  {c:"不辣",p:"bú là",e:"No spice",d:"food",approx:"boo la"},
+  {c:"麻",p:"má",e:"Numbing (Sichuan pepper)",d:"food",approx:"ma"},
+  {c:"火锅",p:"huǒguō",e:"Hotpot",d:"food",approx:"hwoh gwoh"},
+  {c:"鸳鸯锅",p:"yuānyāng guō",e:"Half-and-half hotpot",d:"food"},
+  {c:"串串",p:"chuànchuàn",e:"Skewers",d:"food",approx:"chwan chwan"},
+  {c:"担担面",p:"dàndàn miàn",e:"Dan dan noodles",d:"food",approx:"dan dan myen"},
+  {c:"小面",p:"xiǎomiàn",e:"Chongqing spicy noodles",d:"food",approx:"shyow myen"},
+  {c:"一份",p:"yí fèn",e:"One portion",d:"food",approx:"ee fun"},
+  {c:"买单",p:"mǎidān",e:"The bill please",d:"food",approx:"my dan"},
+  {c:"打包",p:"dǎbāo",e:"Takeaway / to go",d:"food",approx:"da bow"},
+  {c:"我不吃肉",p:"wǒ bù chī ròu",e:"I don't eat meat",d:"food"},
+  {c:"好吃",p:"hǎochī",e:"Delicious",d:"food",approx:"how chuh"},
+  {c:"来一瓶水",p:"lái yì píng shuǐ",e:"A bottle of water please",d:"food",approx:"lie ee ping shway"},
+  {c:"服务员",p:"fúwùyuán",e:"Waiter!",d:"food",approx:"foo woo ywan"},
+  {c:"菜单",p:"càidān",e:"Menu",d:"food",approx:"tsye dan"},
+  {c:"我对花生过敏",p:"wǒ duì huāshēng guòmǐn",e:"I'm allergic to peanuts",d:"food"},
+  // Transport
+  {c:"我要去",p:"wǒ yào qù",e:"I want to go to...",d:"trans",approx:"woh yow choo"},
+  {c:"请在这里停",p:"qǐng zài zhèlǐ tíng",e:"Please stop here",d:"trans"},
+  {c:"地铁站在哪里",p:"dìtiě zhàn zài nǎlǐ",e:"Where is the metro?",d:"trans"},
+  {c:"高铁",p:"gāotiě",e:"High-speed rail",d:"trans",approx:"gow tyeh"},
+  {c:"火车站",p:"huǒchē zhàn",e:"Train station",d:"trans",approx:"hwoh chuh jan"},
+  {c:"机场",p:"jīchǎng",e:"Airport",d:"trans",approx:"jee chang"},
+  {c:"一张去西安的票",p:"yì zhāng qù Xī'ān de piào",e:"One ticket to Xi'an",d:"trans"},
+  {c:"几点出发",p:"jǐ diǎn chūfā",e:"What time does it leave?",d:"trans"},
+  {c:"出口",p:"chūkǒu",e:"Exit",d:"trans",approx:"choo koh"},
+  {c:"入口",p:"rùkǒu",e:"Entrance",d:"trans",approx:"roo koh"},
+  {c:"我在这里等你",p:"wǒ zài zhèlǐ děng nǐ",e:"Waiting here for you",d:"trans"},
+  {c:"左转",p:"zuǒ zhuǎn",e:"Turn left",d:"trans",approx:"zwoh jwan"},
+  {c:"右转",p:"yòu zhuǎn",e:"Turn right",d:"trans",approx:"yo jwan"},
+  {c:"直走",p:"zhí zǒu",e:"Go straight",d:"trans",approx:"juh zoh"},
+  // Hotel
+  {c:"我有预订",p:"wǒ yǒu yùdìng",e:"I have a reservation",d:"hotel"},
+  {c:"护照",p:"hùzhào",e:"Passport",d:"hotel",approx:"hoo jow"},
+  {c:"退房",p:"tuìfáng",e:"Check out",d:"hotel",approx:"tway fang"},
+  {c:"行李寄存",p:"xíngli jìcún",e:"Luggage storage",d:"hotel"},
+  {c:"WiFi密码是什么",p:"WiFi mìmǎ shì shénme",e:"What's the WiFi password?",d:"hotel"},
+  {c:"几楼",p:"jǐ lóu",e:"Which floor?",d:"hotel",approx:"jee loh"},
+  {c:"空调",p:"kōngtiáo",e:"Air conditioning",d:"hotel",approx:"kong tyow"},
+  {c:"毛巾",p:"máojīn",e:"Towel",d:"hotel",approx:"mow jin"},
+  {c:"叫醒服务",p:"jiàoxǐng fúwù",e:"Wake-up call",d:"hotel"},
+  // Shopping
+  {c:"可以便宜一点吗",p:"kěyǐ piányi yìdiǎn ma",e:"Can you make it cheaper?",d:"shop"},
+  {c:"太贵了",p:"tài guì le",e:"Too expensive",d:"shop",approx:"tie gway luh"},
+  {c:"可以用支付宝吗",p:"kěyǐ yòng Zhīfùbǎo ma",e:"Can I use Alipay?",d:"shop"},
+  {c:"可以刷卡吗",p:"kěyǐ shuākǎ ma",e:"Can I pay by card?",d:"shop"},
+  {c:"我看看",p:"wǒ kànkan",e:"Just looking",d:"shop",approx:"woh kan kan"},
+  {c:"有没有别的颜色",p:"yǒu méiyǒu bié de yánsè",e:"Do you have other colours?",d:"shop"},
+  {c:"我要黑色的",p:"wǒ yào hēisè de",e:"I want the black one",d:"shop"},
+  {c:"有没有大一点的",p:"yǒu méiyǒu dà yìdiǎn de",e:"Do you have a bigger one?",d:"shop"},
+  {c:"打折吗",p:"dǎzhé ma",e:"Is there a discount?",d:"shop",approx:"da juh ma"},
+  // Colors
+  {c:"黑色",p:"hēisè",e:"Black",d:"col",approx:"hay suh"},
+  {c:"白色",p:"báisè",e:"White",d:"col",approx:"bye suh"},
+  {c:"红色",p:"hóngsè",e:"Red",d:"col",approx:"hong suh"},
+  {c:"蓝色",p:"lánsè",e:"Blue",d:"col",approx:"lan suh"},
+  {c:"绿色",p:"lǜsè",e:"Green",d:"col",approx:"lyoo suh"},
+  {c:"黄色",p:"huángsè",e:"Yellow",d:"col",approx:"hwang suh"},
+  {c:"粉色",p:"fěnsè",e:"Pink",d:"col",approx:"fun suh"},
+  {c:"紫色",p:"zǐsè",e:"Purple",d:"col",approx:"zuh suh"},
+  {c:"橙色",p:"chéngsè",e:"Orange",d:"col",approx:"chung suh"},
+  {c:"灰色",p:"huīsè",e:"Grey",d:"col",approx:"hway suh"},
+  // Verbs
+  {c:"要",p:"yào",e:"Want / need",d:"verb",approx:"yow"},
+  {c:"去",p:"qù",e:"Go",d:"verb",approx:"choo"},
+  {c:"来",p:"lái",e:"Come",d:"verb",approx:"lie"},
+  {c:"吃",p:"chī",e:"Eat",d:"verb",approx:"chuh"},
+  {c:"喝",p:"hē",e:"Drink",d:"verb",approx:"huh"},
+  {c:"看",p:"kàn",e:"Look / watch",d:"verb",approx:"kan"},
+  {c:"喜欢",p:"xǐhuān",e:"Like",d:"verb",approx:"shee hwan"},
+  {c:"有",p:"yǒu",e:"Have",d:"verb",approx:"yo"},
+  {c:"没有",p:"méiyǒu",e:"Don't have",d:"verb",approx:"may yo"},
+  {c:"知道",p:"zhīdào",e:"Know",d:"verb",approx:"juh dow"},
+  {c:"不知道",p:"bù zhīdào",e:"Don't know",d:"verb",approx:"boo juh dow"},
+  {c:"明白",p:"míngbái",e:"Understand",d:"verb",approx:"ming bye"},
+  {c:"可以",p:"kěyǐ",e:"Can / may",d:"verb",approx:"kuh ee"},
+  {c:"帮我",p:"bāng wǒ",e:"Help me",d:"verb",approx:"bang woh"},
+  {c:"给我",p:"gěi wǒ",e:"Give me",d:"verb",approx:"gay woh"},
+  {c:"带我去",p:"dài wǒ qù",e:"Take me to",d:"verb"},
+  // Sentence builders
+  {c:"我想要",p:"wǒ xiǎng yào",e:"I want / I'd like",d:"build",approx:"woh shyang yow"},
+  {c:"你有...吗",p:"nǐ yǒu...ma",e:"Do you have...?",d:"build",approx:"nee yo...ma"},
+  {c:"这个多少钱",p:"zhège duōshao qián",e:"How much is this?",d:"build"},
+  {c:"太大了",p:"tài dà le",e:"Too big",d:"build",approx:"tie da luh"},
+  {c:"太小了",p:"tài xiǎo le",e:"Too small",d:"build",approx:"tie shyow luh"},
+  {c:"我不喜欢",p:"wǒ bù xǐhuān",e:"I don't like it",d:"build"},
+  {c:"我喜欢这个",p:"wǒ xǐhuān zhège",e:"I like this one",d:"build"},
+  {c:"在哪里",p:"zài nǎlǐ",e:"Where is it?",d:"build",approx:"zye na lee"},
+  {c:"怎么走",p:"zěnme zǒu",e:"How do I get there?",d:"build",approx:"zen muh zoh"},
+  {c:"能帮我吗",p:"néng bāng wǒ ma",e:"Can you help me?",d:"build"},
+  {c:"我要这个颜色",p:"wǒ yào zhège yánsè",e:"I want this colour",d:"build"},
+  {c:"有没有...的",p:"yǒu méiyǒu...de",e:"Do you have...?",d:"build"},
+  // Daily life
+  {c:"几点了",p:"jǐ diǎn le",e:"What time is it?",d:"daily",approx:"jee dyen luh"},
+  {c:"今天",p:"jīntiān",e:"Today",d:"daily",approx:"jin tyen"},
+  {c:"明天",p:"míngtiān",e:"Tomorrow",d:"daily",approx:"ming tyen"},
+  {c:"昨天",p:"zuótiān",e:"Yesterday",d:"daily",approx:"zwoh tyen"},
+  {c:"热",p:"rè",e:"Hot",d:"daily",approx:"ruh"},
+  {c:"冷",p:"lěng",e:"Cold",d:"daily",approx:"lung"},
+  {c:"大",p:"dà",e:"Big",d:"daily",approx:"da"},
+  {c:"小",p:"xiǎo",e:"Small",d:"daily",approx:"shyow"},
+  {c:"好看",p:"hǎokàn",e:"Beautiful / nice-looking",d:"daily",approx:"how kan"},
+  {c:"太好了",p:"tài hǎo le",e:"That's great!",d:"daily",approx:"tie how luh"},
+  {c:"没问题",p:"méi wèntí",e:"No problem",d:"daily",approx:"may one tee"},
+  {c:"等一下",p:"děng yīxià",e:"Wait a moment",d:"daily",approx:"dung ee shya"},
+  {c:"一起去",p:"yīqǐ qù",e:"Let's go together",d:"daily",approx:"ee chee choo"},
+  {c:"累了",p:"lèi le",e:"Tired",d:"daily",approx:"lay luh"},
+  {c:"饿了",p:"è le",e:"Hungry",d:"daily",approx:"uh luh"},
+  // Numbers
+  {c:"一",p:"yī",e:"1",d:"num",approx:"ee"},{c:"二",p:"èr",e:"2",d:"num",approx:"ar"},{c:"三",p:"sān",e:"3",d:"num",approx:"san"},
+  {c:"四",p:"sì",e:"4",d:"num",approx:"suh"},{c:"五",p:"wǔ",e:"5",d:"num",approx:"woo"},{c:"六",p:"liù",e:"6",d:"num",approx:"lyo"},
+  {c:"七",p:"qī",e:"7",d:"num",approx:"chee"},{c:"八",p:"bā",e:"8",d:"num",approx:"ba"},{c:"九",p:"jiǔ",e:"9",d:"num",approx:"jyo"},
+  {c:"十",p:"shí",e:"10",d:"num",approx:"shuh"},{c:"百",p:"bǎi",e:"Hundred",d:"num",approx:"bye"},{c:"千",p:"qiān",e:"Thousand",d:"num",approx:"chyen"},
+  {c:"二十五",p:"èrshíwǔ",e:"25",d:"num"},{c:"五十",p:"wǔshí",e:"50",d:"num"},{c:"一百",p:"yībǎi",e:"100",d:"num"},
+  // Chengdu
+  {c:"熊猫基地",p:"xióngmāo jīdì",e:"Panda Research Base",d:"cd"},{c:"宽窄巷子",p:"Kuānzhǎi Xiàngzi",e:"Kuanzhai Alley",d:"cd"},
+  {c:"茶馆",p:"cháguǎn",e:"Teahouse",d:"cd",approx:"cha gwan"},{c:"人民公园",p:"Rénmín Gōngyuán",e:"People's Park",d:"cd"},
+  {c:"青城山",p:"Qīngchéng Shān",e:"Qingcheng Mountain",d:"cd"},{c:"锦里",p:"Jǐnlǐ",e:"Jinli Ancient Street",d:"cd"},
+  // Chongqing
+  {c:"洪崖洞",p:"Hóngyádòng",e:"Hongya Cave",d:"cq"},{c:"长江索道",p:"Chángjiāng suǒdào",e:"Yangtze cable car",d:"cq"},
+  {c:"轻轨",p:"qīngguǐ",e:"Light rail (through the building!)",d:"cq"},{c:"解放碑",p:"Jiěfàngbēi",e:"Jiefangbei downtown",d:"cq"},
+  {c:"磁器口",p:"Cíqìkǒu",e:"Ciqikou old town",d:"cq"},
+  // Xi'an
+  {c:"兵马俑",p:"bīngmǎyǒng",e:"Terracotta Warriors",d:"xa"},{c:"回民街",p:"Huímín Jiē",e:"Muslim Quarter",d:"xa"},
+  {c:"肉夹馍",p:"ròujiāmó",e:"Xi'an meat sandwich",d:"xa",approx:"roh jya moh"},{c:"城墙",p:"chéngqiáng",e:"City wall",d:"xa",approx:"chung chyang"},
+  {c:"凉皮",p:"liángpí",e:"Cold skin noodles",d:"xa",approx:"lyang pee"},{c:"大雁塔",p:"Dàyàn Tǎ",e:"Big Wild Goose Pagoda",d:"xa"},
+  // Emergencies
+  {c:"救命",p:"jiùmìng",e:"Help!",d:"emg",approx:"jyo ming"},{c:"我需要医生",p:"wǒ xūyào yīshēng",e:"I need a doctor",d:"emg"},
+  {c:"警察",p:"jǐngchá",e:"Police",d:"emg",approx:"jing cha"},{c:"我迷路了",p:"wǒ mílù le",e:"I'm lost",d:"emg"},
+  {c:"我的护照丢了",p:"wǒ de hùzhào diū le",e:"I've lost my passport",d:"emg"},{c:"请叫救护车",p:"qǐng jiào jiùhùchē",e:"Please call an ambulance",d:"emg"},
+];
+const TONE_ITEMS=[
+  {c:"妈",p:"mā",t:1},{c:"麻",p:"má",t:2},{c:"马",p:"mǎ",t:3},{c:"骂",p:"mà",t:4},
+  {c:"汤",p:"tāng",t:1},{c:"糖",p:"táng",t:2},{c:"躺",p:"tǎng",t:3},{c:"烫",p:"tàng",t:4},
+  {c:"八",p:"bā",t:1},{c:"拔",p:"bá",t:2},{c:"把",p:"bǎ",t:3},{c:"爸",p:"bà",t:4},
+  {c:"吃",p:"chī",t:1},{c:"茶",p:"chá",t:2},{c:"你",p:"nǐ",t:3},{c:"是",p:"shì",t:4},
+  {c:"天",p:"tiān",t:1},{c:"钱",p:"qián",t:2},{c:"买",p:"mǎi",t:3},{c:"卖",p:"mài",t:4},
+  {c:"高",p:"gāo",t:1},{c:"来",p:"lái",t:2},{c:"可",p:"kě",t:3},{c:"去",p:"qù",t:4},
+];
+const SCENARIOS=[
+  {id:"hotpot",name:"Hotpot restaurant",zh:"火锅店",role:"a friendly waiter in a Chengdu hotpot restaurant. Help the customer order, choose spice levels, and understand the menu"},
+  {id:"taxi",name:"Didi driver",zh:"出租车",role:"a chatty Didi taxi driver in Chongqing. Help confirm the destination and make friendly small talk"},
+  {id:"hotel",name:"Hotel check-in",zh:"酒店",role:"a helpful hotel receptionist in Xi'an. The guest is checking in and needs assistance"},
+  {id:"market",name:"Market bargaining",zh:"市场",role:"a friendly souvenir stall owner at Xi'an's Muslim Quarter. Engage in friendly price bargaining"},
+  {id:"train",name:"Train station",zh:"车站",role:"a helpful ticket clerk at Chengdu East railway station. Help the traveller buy a high-speed rail ticket to Xi'an"},
+  {id:"teahouse",name:"Chengdu teahouse",zh:"茶馆",role:"a relaxed teahouse host in Chengdu's People's Park. Help the customer choose and order tea"},
+  {id:"restaurant",name:"Local restaurant",zh:"餐厅",role:"a friendly local restaurant owner in Xi'an near the Muslim Quarter. Help the customer order food from the menu"},
+];
+
+// ── Helpers ───────────────────────────────────────────────────────────
 const todayStr=()=>new Date().toISOString().slice(0,10);
 const daysBetween=(a,b)=>Math.round((new Date(b)-new Date(a))/86400000);
-// Web Audio tone fallback
+const last7Days=()=>Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-6+i);return d.toISOString().slice(0,10);});
+
+// ── Web Audio ─────────────────────────────────────────────────────────
 const TC={'ā':1,'á':2,'ǎ':3,'à':4,'ē':1,'é':2,'ě':3,'è':4,'ī':1,'í':2,'ǐ':3,'ì':4,'ō':1,'ó':2,'ǒ':3,'ò':4,'ū':1,'ú':2,'ǔ':3,'ù':4,'ǖ':1,'ǘ':2,'ǚ':3,'ǜ':4};
 function parseTones(py){return py.trim().split(/\s+/).map(s=>{for(const[ch,t] of Object.entries(TC))if(s.includes(ch))return t;return 0;});}
 let _ac=null;
-function getAC(){const Ctor=window.AudioContext||window.webkitAudioContext;if(!_ac||_ac.state==='closed')_ac=new Ctor();if(_ac.state==='suspended')_ac.resume();return _ac;}
-function toneShape(tone,off,dur){const ctx=getAC(),osc=ctx.createOscillator(),g=ctx.createGain();osc.type='sine';osc.connect(g);g.connect(ctx.destination);const[H,MH,M,L]=[320,265,210,160],t0=ctx.currentTime+off;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(0.18,t0+0.04);g.gain.setValueAtTime(0.18,t0+dur-0.07);g.gain.linearRampToValueAtTime(0,t0+dur);switch(tone){case 1:osc.frequency.setValueAtTime(H,t0);break;case 2:osc.frequency.setValueAtTime(M,t0);osc.frequency.exponentialRampToValueAtTime(H,t0+dur);break;case 3:osc.frequency.setValueAtTime(MH,t0);osc.frequency.exponentialRampToValueAtTime(L,t0+dur*0.55);osc.frequency.exponentialRampToValueAtTime(MH,t0+dur);break;case 4:osc.frequency.setValueAtTime(H,t0);osc.frequency.exponentialRampToValueAtTime(L,t0+dur);break;default:osc.frequency.setValueAtTime(M,t0);}osc.start(t0);osc.stop(t0+dur+0.02);}
+function getAC(){const Ctor=window.AudioContext||window.webkitAudioContext;if(!_ac||_ac.state==='closed')_ac=new Ctor();return _ac;}
+function toneShape(tone,off,dur){
+  const ctx=getAC();if(ctx.state==='suspended')ctx.resume();
+  const osc=ctx.createOscillator(),g=ctx.createGain();
+  osc.type='sine';osc.connect(g);g.connect(ctx.destination);
+  const[H,MH,M,L]=[320,265,210,160],t0=ctx.currentTime+off;
+  g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(0.18,t0+0.04);
+  g.gain.setValueAtTime(0.18,t0+dur-0.07);g.gain.linearRampToValueAtTime(0,t0+dur);
+  switch(tone){
+    case 1:osc.frequency.setValueAtTime(H,t0);break;
+    case 2:osc.frequency.setValueAtTime(M,t0);osc.frequency.exponentialRampToValueAtTime(H,t0+dur);break;
+    case 3:osc.frequency.setValueAtTime(MH,t0);osc.frequency.exponentialRampToValueAtTime(L,t0+dur*0.55);osc.frequency.exponentialRampToValueAtTime(MH,t0+dur);break;
+    case 4:osc.frequency.setValueAtTime(H,t0);osc.frequency.exponentialRampToValueAtTime(L,t0+dur);break;
+    default:osc.frequency.setValueAtTime(M,t0);
+  }
+  osc.start(t0);osc.stop(t0+dur+0.02);
+}
 function toneSound(py){parseTones(py).forEach((t,i)=>toneShape(t,i*0.38,0.32));}
-// Primary TTS via Vercel proxy + Web Audio decode
+// FIX: getAC() called SYNCHRONOUSLY before any await — AudioContext must be
+// in 'running' state before the async fetch chain begins
 async function speak(chinese,pinyin){
+  const ctx=getAC(); // ← sync, captures gesture context
+  try{ctx.resume();}catch(e){}
   try{
     const res=await fetch('/api/tts?text='+encodeURIComponent(chinese));
     if(!res.ok)throw new Error();
     const buf=await res.arrayBuffer();
-    const ctx=getAC();
-    const audio=await ctx.decodeAudioData(buf);
+    const audio=await new Promise((res,rej)=>ctx.decodeAudioData(buf,res,rej));
     const src=ctx.createBufferSource();
     src.buffer=audio;src.connect(ctx.destination);src.start(0);
     return;
   }catch(e){}
   if(pinyin)toneSound(pinyin);
 }
-// State
-const DEF={cards:{},streak:0,lastStudy:null,reviewsToday:0,reviewsDate:null,newPerDay:8,quizBest:0,toneBest:0};
-function loadState(){try{const r=store.get('mand');if(r?.value)return{...DEF,...JSON.parse(r.value)};}catch(e){}return{...DEF};}
-function saveState(s){store.set('mand',JSON.stringify(s));}
-// UI components
-function Seal({char,size=64,rotate=-3}){return <div style={{width:size,height:size,background:C.vermilion,color:"#FFF8EE",fontFamily:HAN,fontWeight:900,fontSize:size*0.52,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:size*0.12,transform:`rotate(${rotate}deg)`,boxShadow:"0 2px 0 "+C.vermilionDark,lineHeight:1}}>{char}</div>;}
-function Btn({children,onClick,color=C.ink,bg="transparent",border=true,full,disabled,style:st}){return <button onClick={onClick} disabled={disabled} style={{fontFamily:UI,fontWeight:700,fontSize:15,color,background:bg,border:border?`1.5px solid ${bg!=="transparent"?bg:C.ink}`:"none",padding:"12px 18px",borderRadius:10,width:full?"100%":"auto",opacity:disabled?0.45:1,cursor:"pointer",...st}}>{children}</button>;}
-function SpeakBtn({chinese,pinyin,big}){return <button onClick={e=>{e.stopPropagation();speak(chinese,pinyin);}} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:"50%",width:big?52:40,height:big?52:40,fontSize:big?22:17,cursor:"pointer"}}>🔊</button>;}
+// Unlock on first touch
+document.addEventListener('touchstart',()=>{try{getAC().resume();}catch(e){}},{once:true,passive:true});
+
+// ── State ─────────────────────────────────────────────────────────────
+const DEF={cards:{},streak:0,lastStudy:null,studyHistory:{},reviewsToday:0,reviewsDate:null,newPerDay:8,quizBest:0,toneBest:0,totalReviews:0};
+function loadState(){try{const r=store.get('mand2');if(r?.value)return{...DEF,...JSON.parse(r.value)};}catch(e){}return{...DEF};}
+function saveState(s){store.set('mand2',JSON.stringify(s));}
+
+// ── Confetti ──────────────────────────────────────────────────────────
+const CONFETTI_ITEMS=['🎉','✨','🌟','🎊','⭐','🏮','福','喜','好','🀄','🎋'];
+function Confetti({score}){
+  if(score<8)return null;
+  const items=Array.from({length:score>=10?30:20},(_,i)=>({
+    left:Math.random()*100,
+    delay:Math.random()*0.8,
+    dur:1.2+Math.random()*1.5,
+    char:CONFETTI_ITEMS[Math.floor(Math.random()*CONFETTI_ITEMS.length)],
+    size:16+Math.floor(Math.random()*20),
+  }));
+  return <div style={{position:'fixed',top:0,left:0,width:'100%',height:'100%',pointerEvents:'none',overflow:'hidden',zIndex:9999}}>
+    {items.map((it,i)=><div key={i} style={{position:'absolute',left:it.left+'%',top:'-60px',fontSize:it.size,animation:`fall ${it.dur}s linear ${it.delay}s forwards`}}>{it.char}</div>)}
+  </div>;
+}
+
+// ── Chinese decorative SVG ────────────────────────────────────────────
+function LanternSVG({size=40}){
+  return <svg width={size} height={size*1.4} viewBox="0 0 40 56" fill="none">
+    <line x1="20" y1="0" x2="20" y2="8" stroke="#C8372D" strokeWidth="2"/>
+    <ellipse cx="20" cy="30" rx="14" ry="20" fill="#C8372D"/>
+    <ellipse cx="20" cy="30" rx="10" ry="16" fill="#E8502A" opacity="0.6"/>
+    <text x="20" y="35" textAnchor="middle" fill="#FFF8EE" fontSize="14" fontFamily="serif" fontWeight="900">福</text>
+    <line x1="20" y1="50" x2="20" y2="56" stroke="#C8372D" strokeWidth="2"/>
+    <line x1="14" y1="54" x2="26" y2="54" stroke="#C8372D" strokeWidth="1.5"/>
+  </svg>;
+}
+function DragonWaveSVG(){
+  return <svg viewBox="0 0 300 40" style={{width:'100%',height:40,opacity:0.08}} fill="none">
+    <path d="M0 20 Q30 5 60 20 Q90 35 120 20 Q150 5 180 20 Q210 35 240 20 Q270 5 300 20" stroke="#C8372D" strokeWidth="3" fill="none"/>
+    <circle cx="10" cy="18" r="3" fill="#C8372D"/>
+    <circle cx="70" cy="22" r="2" fill="#B98A2F"/>
+    <circle cx="150" cy="18" r="3" fill="#C8372D"/>
+    <circle cx="230" cy="22" r="2" fill="#B98A2F"/>
+  </svg>;
+}
+
+// ── Small UI ──────────────────────────────────────────────────────────
+function Seal({char,size=64,rotate=-3,bg=C.vermilion}){
+  return <div style={{width:size,height:size,background:bg,color:"#FFF8EE",fontFamily:HAN,fontWeight:900,fontSize:size*0.52,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:size*0.12,transform:`rotate(${rotate}deg)`,boxShadow:`0 2px 0 ${C.vermilionDark}`,lineHeight:1,flexShrink:0}}>{char}</div>;
+}
+function Btn({children,onClick,color=C.ink,bg="transparent",border=true,full,disabled,small,style:st}){
+  return <button onClick={onClick} disabled={disabled} style={{fontFamily:UI,fontWeight:700,fontSize:small?13:15,color,background:bg,border:border?`1.5px solid ${bg!=="transparent"?bg:C.ink}`:"none",padding:small?"8px 12px":"12px 18px",borderRadius:10,width:full?"100%":"auto",opacity:disabled?0.45:1,cursor:"pointer",...st}}>{children}</button>;
+}
+function SpeakBtn({chinese,pinyin,big}){
+  return <button onClick={e=>{e.stopPropagation();speak(chinese,pinyin);}} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:"50%",width:big?52:40,height:big?52:40,fontSize:big?22:17,cursor:"pointer",flexShrink:0}}>🔊</button>;
+}
+function ToneBar({pinyin}){
+  // visual tone indicator strip
+  const tones=parseTones(pinyin);
+  const cols={1:'#3A6B8A',2:'#3E7C59',3:'#B98A2F',4:'#C8372D',0:'#aaa'};
+  const labels={1:'¯',2:'´',3:'ˇ',4:'`',0:'·'};
+  return <div style={{display:'flex',gap:4,justifyContent:'center',flexWrap:'wrap'}}>
+    {tones.map((t,i)=><span key={i} style={{background:cols[t],color:'#fff',fontFamily:UI,fontWeight:700,fontSize:11,padding:'2px 5px',borderRadius:4}}>{labels[t]}</span>)}
+  </div>;
+}
+
+// ── Review session ────────────────────────────────────────────────────
+// FIX: pinyin shown on FRONT, meaning on BACK
 function ReviewSession({queue,state,setState,onDone}){
   const[i,setI]=useState(0),[revealed,setRevealed]=useState(false);
   const card=queue[i];if(!card)return null;
@@ -75,102 +344,399 @@ function ReviewSession({queue,state,setState,onDone}){
     const lvl=g==="again"?0:g==="good"?Math.min(cur.lvl+1,5):Math.min(cur.lvl+2,5);
     const due=new Date(Date.now()+INTERVALS[lvl]*86400000).toISOString().slice(0,10);
     const t=todayStr();
-    const next={...state,cards:{...state.cards,[card.id]:{lvl,due}},reviewsToday:(state.reviewsDate===t?state.reviewsToday:0)+1,reviewsDate:t};
+    const totalReviews=(state.totalReviews||0)+1;
+    const history={...state.studyHistory,[t]:(state.studyHistory?.[t]||0)+1};
+    const next={...state,cards:{...state.cards,[card.id]:{lvl,due}},totalReviews,studyHistory:history,reviewsToday:(state.reviewsDate===t?state.reviewsToday:0)+1,reviewsDate:t};
     if(next.lastStudy!==t){next.streak=next.lastStudy&&daysBetween(next.lastStudy,t)===1?next.streak+1:1;next.lastStudy=t;}
     setState(next);saveState(next);setRevealed(false);
     if(i+1>=queue.length)onDone(next);else setI(i+1);
   };
   return(<div style={{display:"flex",flexDirection:"column",gap:16,flex:1}}>
-    <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>CARD {i+1} OF {queue.length}</div>
-    <div onClick={()=>{setRevealed(true);speak(phrase.c,phrase.p);}} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:"40px 20px",textAlign:"center",cursor:"pointer",minHeight:260,display:"flex",flexDirection:"column",justifyContent:"center",gap:14}}>
-      <div style={{fontFamily:HAN,fontWeight:900,fontSize:phrase.c.length>5?34:48,color:C.ink}}>{phrase.c}</div>
-      {revealed?(<><div style={{fontFamily:UI,fontSize:20,color:C.vermilion,fontWeight:700}}>{phrase.p}</div><div style={{fontFamily:UI,fontSize:17,color:C.ink}}>{phrase.e}</div><div style={{alignSelf:"center"}}><SpeakBtn chinese={phrase.c} pinyin={phrase.p} big/></div></>):(<div style={{fontFamily:UI,fontSize:14,color:C.inkSoft}}>Tap to reveal and hear it</div>)}
+    <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,display:'flex',justifyContent:'space-between'}}>
+      <span>CARD {i+1} / {queue.length}</span>
+      <span>{Math.round((i/queue.length)*100)}%</span>
     </div>
-    {revealed?(<div style={{display:"flex",gap:10}}><Btn full bg={C.card} onClick={()=>grade("again")} style={{borderColor:C.vermilion,color:C.vermilion}}>Again</Btn><Btn full bg={C.ink} color="#FFF8EE" border={false} onClick={()=>grade("good")}>Good</Btn><Btn full bg={C.jade} color="#FFF8EE" border={false} onClick={()=>grade("easy")}>Easy</Btn></div>):<Btn full onClick={()=>{setRevealed(true);speak(phrase.c,phrase.p);}}>Show answer</Btn>}
+    <div style={{height:4,background:C.line,borderRadius:2}}><div style={{height:'100%',background:C.vermilion,borderRadius:2,width:`${(i/queue.length)*100}%`,transition:'width 0.3s'}}/></div>
+    <div onClick={()=>{if(!revealed){setRevealed(true);speak(phrase.c,phrase.p);}}} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:"32px 20px",textAlign:"center",cursor:"pointer",minHeight:280,display:"flex",flexDirection:"column",justifyContent:"center",gap:12}}>
+      {/* FRONT: Character + pinyin + approx */}
+      <div style={{fontFamily:HAN,fontWeight:900,fontSize:phrase.c.length>5?32:48,color:C.ink,lineHeight:1.2}}>{phrase.c}</div>
+      <div style={{fontFamily:UI,fontSize:18,color:C.vermilion,fontWeight:700}}>{phrase.p}</div>
+      <ToneBar pinyin={phrase.p}/>
+      {phrase.approx&&<div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,fontStyle:'italic'}}>🗣 sounds like: "{phrase.approx}"</div>}
+      {/* BACK: revealed */}
+      {revealed&&<div className="slideUp" style={{borderTop:`1px solid ${C.line}`,paddingTop:12,marginTop:4}}>
+        <div style={{fontFamily:UI,fontSize:22,color:C.ink,fontWeight:700,marginBottom:8}}>{phrase.e}</div>
+        <div style={{alignSelf:"center",display:'flex',justifyContent:'center'}}><SpeakBtn chinese={phrase.c} pinyin={phrase.p} big/></div>
+      </div>}
+      {!revealed&&<div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,marginTop:8}}>Tap to reveal meaning</div>}
+    </div>
+    {revealed?(<div style={{display:"flex",gap:10}}>
+      <Btn full bg={C.card} onClick={()=>grade("again")} style={{borderColor:C.vermilion,color:C.vermilion}}>Again</Btn>
+      <Btn full bg={C.ink} color="#FFF8EE" border={false} onClick={()=>grade("good")}>Good</Btn>
+      <Btn full bg={C.jade} color="#FFF8EE" border={false} onClick={()=>grade("easy")}>Easy ✓</Btn>
+    </div>):<Btn full onClick={()=>{setRevealed(true);speak(phrase.c,phrase.p);}}>Show meaning</Btn>}
   </div>);
 }
+
+// ── Today view ────────────────────────────────────────────────────────
 function TodayView({state,setState}){
-  const[session,setSession]=useState(null);const t=todayStr();
+  const[session,setSession]=useState(null),[settingsOpen,setSettingsOpen]=useState(false);
+  const t=todayStr();
   const dueIds=PHRASES.map((_,id)=>id).filter(id=>{const c=state.cards[id];return c&&c.due<=t;});
   const newIds=PHRASES.map((_,id)=>id).filter(id=>!state.cards[id]).slice(0,state.newPerDay);
   const learned=Object.keys(state.cards).length,mastered=Object.values(state.cards).filter(c=>c.lvl>=4).length;
+  const days=last7Days();
+  const weekStudied=days.filter(d=>state.studyHistory?.[d]>0).length;
   if(session&&session!=="done")return <ReviewSession queue={session} state={state} setState={setState} onDone={()=>setSession("done")}/>;
-  return(<div style={{display:"flex",flexDirection:"column",gap:20}}>
-    <div style={{display:"flex",alignItems:"center",gap:16}}><Seal char={String(state.streak||0)} size={72}/><div><div style={{fontFamily:UI,fontWeight:700,fontSize:18,color:C.ink}}>{state.streak||0} day streak</div><div style={{fontFamily:UI,fontSize:14,color:C.inkSoft}}>{state.lastStudy===t?"You've studied today. 加油!":"Study today to keep your seal."}</div></div></div>
-    {session==="done"&&<div style={{background:C.jade,color:"#FFF8EE",borderRadius:12,padding:16,fontFamily:UI,fontWeight:700}}>Session complete. 很好!</div>}
+  const startSession=()=>{const q=[...dueIds.map(id=>({id})),...newIds.map(id=>({id}))];if(q.length)setSession(q);};
+  return(<div style={{display:"flex",flexDirection:"column",gap:18}}>
+    <DragonWaveSVG/>
+    {/* Streak header */}
+    <div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:18,display:'flex',gap:16,alignItems:'center'}}>
+      <div style={{position:'relative'}}><Seal char={String(state.streak||0)} size={72}/><div style={{position:'absolute',bottom:-6,right:-6}}><LanternSVG size={22}/></div></div>
+      <div style={{flex:1}}>
+        <div style={{fontFamily:UI,fontWeight:700,fontSize:18,color:C.ink}}>{state.streak||0} day streak</div>
+        <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,marginBottom:8}}>{state.lastStudy===t?"Today's session done · 加油!":"Study today to extend your streak"}</div>
+        {/* 7-day calendar dots */}
+        <div style={{display:'flex',gap:5}}>
+          {days.map(d=>{const done=state.studyHistory?.[d]>0;const isToday=d===t;return<div key={d} style={{width:28,height:28,borderRadius:8,background:done?C.vermilion:C.paper,border:`1.5px solid ${done?C.vermilion:C.line}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontFamily:UI,fontWeight:700,color:done?'#FFF8EE':C.inkSoft,outline:isToday?`2px solid ${C.gold}`:undefined}}>
+            {done?'✓':d.slice(8)}
+          </div>;})}
+        </div>
+      </div>
+    </div>
+    {session==="done"&&<div className="pop" style={{background:C.jade,color:"#FFF8EE",borderRadius:12,padding:16,fontFamily:UI,fontWeight:700,textAlign:'center',fontSize:16}}>🎉 Session complete · 很好! Come back tomorrow!</div>}
+    {/* Session card */}
     <div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:20}}>
-      <div style={{fontFamily:UI,fontSize:13,letterSpacing:1.5,color:C.inkSoft}}>TODAY'S SESSION</div>
-      <div style={{display:"flex",gap:24,margin:"14px 0 18px"}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+        <div style={{fontFamily:UI,fontSize:12,letterSpacing:1.5,color:C.inkSoft}}>TODAY'S SESSION</div>
+        <button onClick={()=>setSettingsOpen(!settingsOpen)} style={{background:'none',border:'none',fontFamily:UI,fontSize:12,color:C.gold,fontWeight:700,cursor:'pointer'}}>⚙ {state.newPerDay}/day</button>
+      </div>
+      {settingsOpen&&<div style={{background:C.paper,borderRadius:10,padding:12,marginBottom:14,display:'flex',flexWrap:'wrap',gap:8,alignItems:'center'}}>
+        <span style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>New phrases per day:</span>
+        {[5,8,12,20].map(n=><button key={n} onClick={()=>{const next={...state,newPerDay:n};setState(next);saveState(next);setSettingsOpen(false);}} style={{background:state.newPerDay===n?C.ink:C.card,color:state.newPerDay===n?'#FFF8EE':C.ink,border:`1.5px solid ${C.line}`,borderRadius:8,padding:'6px 12px',fontFamily:UI,fontWeight:700,fontSize:14,cursor:'pointer'}}>{n}</button>)}
+      </div>}
+      <div style={{display:"flex",gap:20,marginBottom:18}}>
         <div><div style={{fontFamily:HAN,fontWeight:900,fontSize:32,color:C.vermilion}}>{dueIds.length}</div><div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>to review</div></div>
         <div><div style={{fontFamily:HAN,fontWeight:900,fontSize:32,color:C.ink}}>{newIds.length}</div><div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>new phrases</div></div>
       </div>
-      <Btn full bg={C.vermilion} color="#FFF8EE" border={false} onClick={()=>{const q=[...dueIds.map(id=>({id})),...newIds.map(id=>({id}))];if(q.length)setSession(q);}} disabled={!dueIds.length&&!newIds.length}>{dueIds.length||newIds.length?"Start studying":"All done for today"}</Btn>
+      {dueIds.length||newIds.length?<Btn full bg={C.vermilion} color="#FFF8EE" border={false} onClick={startSession}>Start studying →</Btn>:<div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,textAlign:'center',padding:'8px 0'}}>All done! New reviews appear tomorrow based on your ratings.</div>}
     </div>
-    <div style={{display:"flex",gap:12}}>
-      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:14,textAlign:"center"}}><div style={{fontFamily:HAN,fontWeight:900,fontSize:24,color:C.ink}}>{learned}<span style={{fontSize:14,color:C.inkSoft}}>/{PHRASES.length}</span></div><div style={{fontFamily:UI,fontSize:12,color:C.inkSoft}}>started</div></div>
-      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:14,textAlign:"center"}}><div style={{fontFamily:HAN,fontWeight:900,fontSize:24,color:C.jade}}>{mastered}</div><div style={{fontFamily:UI,fontSize:12,color:C.inkSoft}}>mastered 记</div></div>
+    {/* Stats */}
+    <div style={{display:"flex",gap:10}}>
+      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:12,textAlign:"center"}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.ink}}>{learned}<span style={{fontSize:13,color:C.inkSoft}}>/{PHRASES.length}</span></div>
+        <div style={{fontFamily:UI,fontSize:11,color:C.inkSoft}}>started</div>
+      </div>
+      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:12,textAlign:"center"}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.jade}}>{mastered}</div>
+        <div style={{fontFamily:UI,fontSize:11,color:C.inkSoft}}>mastered 记</div>
+      </div>
+      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:12,textAlign:"center"}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.gold}}>{weekStudied}</div>
+        <div style={{fontFamily:UI,fontSize:11,color:C.inkSoft}}>days this week</div>
+      </div>
+      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:12,textAlign:"center"}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.sky}}>{state.totalReviews||0}</div>
+        <div style={{fontFamily:UI,fontSize:11,color:C.inkSoft}}>total reviews</div>
+      </div>
     </div>
   </div>);
 }
+
+// ── Decks view ────────────────────────────────────────────────────────
 function DecksView({state,setState}){
   const[open,setOpen]=useState(null),[session,setSession]=useState(null);
   if(session&&session!=="done")return <ReviewSession queue={session} state={state} setState={setState} onDone={()=>setSession("done")}/>;
-  if(open){const items=PHRASES.map((p,id)=>({...p,id})).filter(p=>p.d===open),deck=DECKS.find(d=>d.id===open);return(<div style={{display:"flex",flexDirection:"column",gap:10}}><button onClick={()=>setOpen(null)} style={{alignSelf:"flex-start",background:"none",border:"none",fontFamily:UI,fontWeight:700,color:C.vermilion,fontSize:15,cursor:"pointer",padding:0}}>← All decks</button><div style={{fontFamily:HAN,fontWeight:900,fontSize:26,color:C.ink}}>{deck.zh} <span style={{fontFamily:UI,fontWeight:700,fontSize:16,color:C.inkSoft}}>{deck.name}</span></div><Btn full bg={C.ink} color="#FFF8EE" border={false} onClick={()=>setSession(items.map(p=>({id:p.id})))}>Practise deck ({items.length})</Btn>{items.map(p=>(<div key={p.id} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:12}}><SpeakBtn chinese={p.c} pinyin={p.p}/><div style={{flex:1}}><div style={{fontFamily:HAN,fontWeight:700,fontSize:19,color:C.ink}}>{p.c}</div><div style={{fontFamily:UI,fontSize:13.5,color:C.vermilion}}>{p.p} <span style={{color:C.inkSoft}}>· {p.e}</span></div></div>{state.cards[p.id]?.lvl>=4&&<Seal char="记" size={28} rotate={4}/>}</div>))}</div>);}
-  return(<div style={{display:"flex",flexDirection:"column",gap:10}}>{session==="done"&&<div style={{background:C.jade,color:"#FFF8EE",borderRadius:12,padding:14,fontFamily:UI,fontWeight:700}}>Done! 很好!</div>}{DECKS.map(d=>{const items=PHRASES.filter(p=>p.d===d.id),done=items.filter(p=>{const id=PHRASES.indexOf(p);return state.cards[id]?.lvl>=4;}).length;return <button key={d.id} onClick={()=>setOpen(d.id)} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",textAlign:"left"}}><div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.vermilion,width:48}}>{d.zh}</div><div style={{flex:1}}><div style={{fontFamily:UI,fontWeight:700,fontSize:16,color:C.ink}}>{d.name}</div><div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>{done}/{items.length} mastered</div></div><div style={{color:C.inkSoft}}>›</div></button>;})}</div>);
+  if(open){
+    const items=PHRASES.map((p,id)=>({...p,id})).filter(p=>p.d===open);
+    const deck=DECKS.find(d=>d.id===open);
+    return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
+      <button onClick={()=>setOpen(null)} style={{alignSelf:"flex-start",background:"none",border:"none",fontFamily:UI,fontWeight:700,color:C.vermilion,fontSize:15,cursor:"pointer",padding:0}}>← All decks</button>
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
+        <span style={{fontSize:24}}>{deck.icon}</span>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:24,color:C.ink}}>{deck.zh}</div>
+        <div style={{fontFamily:UI,fontWeight:700,fontSize:15,color:C.inkSoft}}>{deck.name}</div>
+      </div>
+      <Btn full bg={C.ink} color="#FFF8EE" border={false} onClick={()=>setSession(items.map(p=>({id:p.id})))}>Practise all {items.length} cards</Btn>
+      {items.map(p=>(<div key={p.id} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:10}}>
+        <SpeakBtn chinese={p.c} pinyin={p.p}/>
+        <div style={{flex:1}}>
+          <div style={{fontFamily:HAN,fontWeight:700,fontSize:19,color:C.ink}}>{p.c} <span style={{fontFamily:UI,fontWeight:700,fontSize:14,color:C.vermilion}}>{p.p}</span></div>
+          <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>{p.e}{p.approx&&<span style={{color:C.gold,fontStyle:'italic'}}> · "{p.approx}"</span>}</div>
+        </div>
+        {state.cards[p.id]?.lvl>=4&&<Seal char="记" size={26} rotate={4}/>}
+      </div>))}
+    </div>);
+  }
+  return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
+    {session==="done"&&<div className="pop" style={{background:C.jade,color:"#FFF8EE",borderRadius:12,padding:14,fontFamily:UI,fontWeight:700}}>Done! 很好!</div>}
+    {DECKS.map(d=>{
+      const items=PHRASES.filter(p=>p.d===d.id);
+      const done=items.filter(p=>{const id=PHRASES.indexOf(p);return state.cards[id]?.lvl>=4;}).length;
+      const pct=Math.round((done/items.length)*100);
+      return <button key={d.id} onClick={()=>setOpen(d.id)} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",textAlign:"left"}}>
+        <span style={{fontSize:22,width:30}}>{d.icon}</span>
+        <div style={{flex:1}}>
+          <div style={{fontFamily:UI,fontWeight:700,fontSize:15,color:C.ink}}>{d.name}</div>
+          <div style={{height:4,background:C.line,borderRadius:2,marginTop:4}}><div style={{height:'100%',background:pct===100?C.jade:C.vermilion,borderRadius:2,width:pct+'%'}}/></div>
+          <div style={{fontFamily:UI,fontSize:11,color:C.inkSoft,marginTop:2}}>{done}/{items.length} mastered</div>
+        </div>
+        <div style={{color:C.inkSoft}}>›</div>
+      </button>;
+    })}
+  </div>);
 }
+
+// ── Quiz view ─────────────────────────────────────────────────────────
 function QuizView({state,setState}){
-  const[mode,setMode]=useState(null),[qs,setQs]=useState([]),[i,setI]=useState(0),[picked,setPicked]=useState(null),[score,setScore]=useState(0);
-  const startMeaning=()=>{const pool=[...PHRASES.keys()],questions=pool.sort(()=>Math.random()-0.5).slice(0,10).map(id=>{const wrong=pool.filter(x=>x!==id).sort(()=>Math.random()-0.5).slice(0,3);return{id,options:[id,...wrong].sort(()=>Math.random()-0.5)};});setQs(questions);setI(0);setScore(0);setPicked(null);setMode("meaning");};
-  const startTone=()=>{const questions=[...TONE_ITEMS].sort(()=>Math.random()-0.5).slice(0,10);setQs(questions);setI(0);setScore(0);setPicked(null);setMode("tone");setTimeout(()=>speak(questions[0].c,questions[0].p),400);};
-  const finish=(fs,kind)=>{const k=kind==="meaning"?"quizBest":"toneBest";if(fs>state[k]){const next={...state,[k]:fs};setState(next);saveState(next);}};
-  if(mode==="meaning"&&i<qs.length){const q=qs[i],phrase=PHRASES[q.id];return(<div style={{display:"flex",flexDirection:"column",gap:14}}><div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>Q{i+1}/10 · {score} correct</div><div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:28,textAlign:"center"}}><div style={{fontFamily:HAN,fontWeight:900,fontSize:36,color:C.ink,marginBottom:8}}>{phrase.c}</div><SpeakBtn chinese={phrase.c} pinyin={phrase.p}/><div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginTop:8}}>What does this mean?</div></div>{q.options.map(opt=>{let bg=C.card,col=C.ink,bord=C.line;if(picked!==null){if(opt===q.id){bg=C.jade;col="#FFF8EE";bord=C.jade;}else if(opt===picked){bg=C.vermilion;col="#FFF8EE";bord=C.vermilion;}}return <button key={opt} disabled={picked!==null} onClick={()=>{setPicked(opt);const ns=score+(opt===q.id?1:0);setTimeout(()=>{if(i+1>=qs.length){finish(ns,"meaning");setI(i+1);}else{setI(i+1);setPicked(null);setScore(ns);}},900);}} style={{background:bg,color:col,border:`1.5px solid ${bord}`,borderRadius:12,padding:"13px 16px",fontFamily:UI,fontWeight:700,fontSize:15,textAlign:"left",cursor:"pointer"}}>{PHRASES[opt].e}</button>;})}</div>);}
-  if(mode==="tone"&&i<qs.length){const q=qs[i],toneNames=["1st ¯ high flat","2nd ´ rising","3rd ˇ dip","4th ` falling"];return(<div style={{display:"flex",flexDirection:"column",gap:14}}><div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>TONE {i+1}/10 · {score} correct</div><div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:28,textAlign:"center"}}><div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginBottom:12}}>Listen — which tone?</div><button onClick={()=>speak(q.c,q.p)} style={{background:C.ink,color:"#FFF8EE",border:"none",borderRadius:"50%",width:72,height:72,fontSize:28,cursor:"pointer"}}>🔊</button>{picked!==null&&<div style={{marginTop:14,fontFamily:HAN,fontWeight:900,fontSize:26,color:C.ink}}>{q.c} <span style={{fontFamily:UI,fontWeight:700,fontSize:18,color:C.vermilion}}>{q.p}</span></div>}</div>{[1,2,3,4].map(t=>{let bg=C.card,col=C.ink,bord=C.line;if(picked!==null){if(t===q.t){bg=C.jade;col="#FFF8EE";bord=C.jade;}else if(t===picked){bg=C.vermilion;col="#FFF8EE";bord=C.vermilion;}}return <button key={t} disabled={picked!==null} onClick={()=>{setPicked(t);const ns=score+(t===q.t?1:0);setTimeout(()=>{if(i+1>=qs.length){finish(ns,"tone");setI(i+1);}else{setI(i+1);setPicked(null);setScore(ns);setTimeout(()=>speak(qs[i+1].c,qs[i+1].p),300);}},1100);}} style={{background:bg,color:col,border:`1.5px solid ${bord}`,borderRadius:12,padding:"13px 16px",fontFamily:UI,fontWeight:700,fontSize:15,textAlign:"left",cursor:"pointer"}}>{toneNames[t-1]}</button>;})}</div>);}
-  if(mode&&i>=qs.length)return(<div style={{display:"flex",flexDirection:"column",gap:16,alignItems:"center",paddingTop:30}}><Seal char={score>=8?"优":score>=5?"好":"练"} size={88} rotate={3}/><div style={{fontFamily:HAN,fontWeight:900,fontSize:40,color:C.ink}}>{score}/10</div><div style={{fontFamily:UI,fontSize:15,color:C.inkSoft,textAlign:"center"}}>{score>=8?"Excellent. 优 means outstanding.":score>=5?"Good work. Keep drilling.":"Tones take time. Try again."}</div><Btn full bg={C.vermilion} color="#FFF8EE" border={false} onClick={()=>setMode(null)}>Back to quizzes</Btn></div>);
-  return(<div style={{display:"flex",flexDirection:"column",gap:14}}><button onClick={startMeaning} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:20,textAlign:"left",cursor:"pointer"}}><div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.vermilion}}>词义 Meaning quiz</div><div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginTop:4}}>See a phrase, pick the English. Best: {state.quizBest}/10</div></button><button onClick={startTone} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:20,textAlign:"left",cursor:"pointer"}}><div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.vermilion}}>声调 Tone trainer</div><div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginTop:4}}>Listen and identify the tone. Best: {state.toneBest}/10</div></button></div>);
+  const[mode,setMode]=useState(null),[qs,setQs]=useState([]),[i,setI]=useState(0),[picked,setPicked]=useState(null),[score,setScore]=useState(0),[showConf,setShowConf]=useState(false);
+  const startMeaning=()=>{
+    const pool=[...PHRASES.keys()];
+    const questions=pool.sort(()=>Math.random()-0.5).slice(0,10).map(id=>{
+      const wrong=pool.filter(x=>x!==id).sort(()=>Math.random()-0.5).slice(0,3);
+      return{id,options:[id,...wrong].sort(()=>Math.random()-0.5)};
+    });
+    setQs(questions);setI(0);setScore(0);setPicked(null);setMode("meaning");setShowConf(false);
+  };
+  const startTone=()=>{
+    const questions=[...TONE_ITEMS].sort(()=>Math.random()-0.5).slice(0,10);
+    setQs(questions);setI(0);setScore(0);setPicked(null);setMode("tone");setShowConf(false);
+    setTimeout(()=>speak(questions[0].c,questions[0].p),400);
+  };
+  const finish=(fs,kind)=>{
+    const k=kind==="meaning"?"quizBest":"toneBest";
+    setShowConf(true);
+    if(fs>state[k]){const next={...state,[k]:fs};setState(next);saveState(next);}
+  };
+  if(mode==="meaning"&&i<qs.length){
+    const q=qs[i],phrase=PHRASES[q.id];
+    return(<div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div style={{display:'flex',justifyContent:'space-between',fontFamily:UI,fontSize:13,color:C.inkSoft}}><span>Q{i+1}/10</span><span>{score} correct</span></div>
+      <div style={{height:4,background:C.line,borderRadius:2}}><div style={{height:'100%',background:C.jade,borderRadius:2,width:`${(score/10)*100}%`,transition:'width 0.3s'}}/></div>
+      <div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:28,textAlign:"center"}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:42,color:C.ink,marginBottom:6}}>{phrase.c}</div>
+        <div style={{fontFamily:UI,fontSize:17,color:C.vermilion,fontWeight:700,marginBottom:6}}>{phrase.p}</div>
+        <SpeakBtn chinese={phrase.c} pinyin={phrase.p}/>
+        <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,marginTop:8}}>What does this mean?</div>
+      </div>
+      {q.options.map(opt=>{
+        let bg=C.card,col=C.ink,bord=C.line;
+        if(picked!==null){if(opt===q.id){bg=C.jade;col="#FFF8EE";bord=C.jade;}else if(opt===picked){bg=C.vermilion;col="#FFF8EE";bord=C.vermilion;}}
+        return <button key={opt} disabled={picked!==null} onClick={()=>{
+          setPicked(opt);
+          // FIX: compute ns correctly, update score state for BOTH last and non-last questions
+          const ns=score+(opt===q.id?1:0);
+          setTimeout(()=>{
+            if(i+1>=qs.length){setScore(ns);finish(ns,"meaning");setI(i+1);}
+            else{setScore(ns);setI(i+1);setPicked(null);}
+          },900);
+        }} style={{background:bg,color:col,border:`1.5px solid ${bord}`,borderRadius:12,padding:"13px 16px",fontFamily:UI,fontWeight:700,fontSize:15,textAlign:"left",cursor:"pointer"}}>{PHRASES[opt].e}</button>;
+      })}
+    </div>);
+  }
+  if(mode==="tone"&&i<qs.length){
+    const q=qs[i],toneNames=["1st tone ¯ (high flat)","2nd tone ´ (rising)","3rd tone ˇ (dip-rise)","4th tone ` (falling)"];
+    return(<div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div style={{display:'flex',justifyContent:'space-between',fontFamily:UI,fontSize:13,color:C.inkSoft}}><span>TONE {i+1}/10</span><span>{score} correct</span></div>
+      <div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:28,textAlign:"center"}}>
+        <div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginBottom:14}}>Listen — which tone?</div>
+        <button onClick={()=>speak(q.c,q.p)} style={{background:C.ink,color:"#FFF8EE",border:"none",borderRadius:"50%",width:72,height:72,fontSize:28,cursor:"pointer"}}>🔊</button>
+        {picked!==null&&<div className="pop" style={{marginTop:14,fontFamily:HAN,fontWeight:900,fontSize:26,color:C.ink}}>{q.c} <span style={{fontFamily:UI,fontWeight:700,fontSize:18,color:C.vermilion}}>{q.p}</span></div>}
+      </div>
+      {[1,2,3,4].map(t=>{
+        let bg=C.card,col=C.ink,bord=C.line;
+        if(picked!==null){if(t===q.t){bg=C.jade;col="#FFF8EE";bord=C.jade;}else if(t===picked){bg=C.vermilion;col="#FFF8EE";bord=C.vermilion;}}
+        return <button key={t} disabled={picked!==null} onClick={()=>{
+          setPicked(t);
+          const ns=score+(t===q.t?1:0);
+          setTimeout(()=>{
+            if(i+1>=qs.length){setScore(ns);finish(ns,"tone");setI(i+1);}
+            else{setScore(ns);setI(i+1);setPicked(null);setTimeout(()=>speak(qs[i+1].c,qs[i+1].p),300);}
+          },1100);
+        }} style={{background:bg,color:col,border:`1.5px solid ${bord}`,borderRadius:12,padding:"13px 16px",fontFamily:UI,fontWeight:700,fontSize:15,textAlign:"left",cursor:"pointer"}}>{toneNames[t-1]}</button>;
+      })}
+    </div>);
+  }
+  if(mode&&i>=qs.length){
+    const grade=score>=10?"优":score>=8?"良":score>=6?"好":"练";
+    const gradeCol=score>=10?C.jade:score>=8?C.sky:score>=6?C.gold:C.inkSoft;
+    const msg=score===10?"Perfect! You're unstoppable. 优秀!":score>=8?"Excellent work! 很好!":score>=6?"Solid effort. Keep going!":"Tones take time. You've got this!";
+    return(<div style={{display:"flex",flexDirection:"column",gap:20,alignItems:"center",paddingTop:20}}>
+      {showConf&&<Confetti score={score}/>}
+      <div className="pop"><Seal char={grade} size={100} rotate={3} bg={gradeCol}/></div>
+      <div style={{fontFamily:HAN,fontWeight:900,fontSize:52,color:C.ink}}>{score}/10</div>
+      <div style={{fontFamily:UI,fontSize:16,color:C.inkSoft,textAlign:"center",lineHeight:1.5}}>{msg}</div>
+      {mode==="meaning"&&score>state.quizBest&&<div style={{background:C.gold,color:"#FFF8EE",borderRadius:10,padding:"8px 18px",fontFamily:UI,fontWeight:700}}>🏆 New best score!</div>}
+      <div style={{display:'flex',gap:10,width:'100%'}}>
+        <Btn full bg={C.vermilion} color="#FFF8EE" border={false} onClick={mode==="meaning"?startMeaning:startTone}>Try again</Btn>
+        <Btn full onClick={()=>setMode(null)}>Back</Btn>
+      </div>
+    </div>);
+  }
+  return(<div style={{display:"flex",flexDirection:"column",gap:14}}>
+    <button onClick={startMeaning} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:20,textAlign:"left",cursor:"pointer"}}>
+      <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.vermilion}}>词义 Meaning quiz</div>
+      <div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginTop:4}}>See a phrase, pick the English meaning. Best: {state.quizBest}/10</div>
+    </button>
+    <button onClick={startTone} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:20,textAlign:"left",cursor:"pointer"}}>
+      <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.vermilion}}>声调 Tone trainer</div>
+      <div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginTop:4}}>Listen and identify which tone it is. Best: {state.toneBest}/10</div>
+    </button>
+    <button onClick={()=>{
+      const pool=Object.entries(state.cards).filter(([,c])=>c.lvl>0).map(([id])=>Number(id));
+      if(pool.length<4){alert("Study at least 4 cards first!");return;}
+      const questions=pool.sort(()=>Math.random()-0.5).slice(0,Math.min(10,pool.length)).map(id=>{
+        const wrong=pool.filter(x=>x!==id).sort(()=>Math.random()-0.5).slice(0,3);
+        return{id,options:[id,...wrong].sort(()=>Math.random()-0.5)};
+      });
+      setQs(questions);setI(0);setScore(0);setPicked(null);setMode("meaning");setShowConf(false);
+    }} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:20,textAlign:"left",cursor:"pointer"}}>
+      <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.sky}}>复习 Review quiz</div>
+      <div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginTop:4}}>Quiz on cards you've already studied ({Object.keys(state.cards).length} available)</div>
+    </button>
+  </div>);
 }
+
+// ── Speak view ────────────────────────────────────────────────────────
 function SpeakView(){
-  const[scenario,setScenario]=useState(null),[msgs,setMsgs]=useState([]),[input,setInput]=useState(""),[busy,setBusy]=useState(false),[showHelp,setShowHelp]=useState({});
+  const[scenario,setScenario]=useState(null),[msgs,setMsgs]=useState([]),[input,setInput]=useState(""),[busy,setBusy]=useState(false),[showHelp,setShowHelp]=useState({}),[apiErr,setApiErr]=useState(null);
   const bottomRef=useRef(null);
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[msgs,busy]);
   const callClaude=async(history,userText,sc)=>{
     const convo=history.map(m=>m.who==="me"?`Learner: ${m.text}`:`You: ${m.chinese}`).join("\n");
-    const prompt=`You are roleplaying as ${sc.role}. The learner is an Irish beginner studying Mandarin for a trip to China. Speak VERY simple Mandarin (HSK1-2 level), 1-2 short sentences max.\n\nConversation so far:\n${convo||"(start — greet them naturally)"}\n\n${userText?`Learner: ${userText}`:""}\n\nRespond ONLY with valid JSON, no markdown:\n{"chinese":"your reply","pinyin":"pinyin with tones","english":"translation","tip":"short correction or null"}`;
-    const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    const prompt=`You are roleplaying as ${sc.role}. The learner is an Irish beginner studying Mandarin for a trip to Chengdu, Chongqing and Xi'an in December 2026. Speak VERY simple Mandarin (HSK1-2 level), 1-2 short sentences max. Be friendly and encouraging.\n\nConversation so far:\n${convo||"(start — greet them naturally and open the scenario)"}\n\n${userText?`Learner says: ${userText}`:""}\n\nRespond ONLY with valid JSON, no markdown fences, no extra text:\n{"chinese":"your reply in simplified Chinese","pinyin":"pinyin with all tone marks","english":"English translation of your reply","tip":"one short friendly tip about what the learner said, or null if they haven't spoken yet"}`;
+    const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:500,messages:[{role:'user',content:prompt}]})});
     const data=await res.json();
+    if(data.error)throw new Error(data.error.message||JSON.stringify(data.error));
     const text=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
     return JSON.parse(text.replace(/```json|```/g,"").trim());
   };
-  const start=async sc=>{setScenario(sc);setMsgs([]);setBusy(true);try{const r=await callClaude([],null,sc);setMsgs([{who:"ai",...r}]);speak(r.chinese,r.pinyin);}catch(e){setMsgs([{who:"ai",chinese:"出错了",pinyin:"chūcuò le",english:"Something went wrong.",tip:null}]);}setBusy(false);};
-  const send=async()=>{if(!input.trim()||busy)return;const mine={who:"me",text:input.trim()};const history=[...msgs,mine];setMsgs(history);setInput("");setBusy(true);try{const r=await callClaude(msgs,mine.text,scenario);setMsgs([...history,{who:"ai",...r}]);speak(r.chinese,r.pinyin);}catch(e){setMsgs([...history,{who:"ai",chinese:"再说一遍?",pinyin:"zài shuō yí biàn?",english:"Connection hiccup.",tip:null}]);}setBusy(false);};
-  if(!scenario)return(<div style={{display:"flex",flexDirection:"column",gap:12}}><div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,lineHeight:1.5}}>Practise real conversations. Reply in Chinese, pinyin, or English.</div>{SCENARIOS.map(sc=><button key={sc.id} onClick={()=>start(sc)} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:14,padding:"16px 18px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",textAlign:"left"}}><div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:C.vermilion,width:56}}>{sc.zh}</div><div style={{fontFamily:UI,fontWeight:700,fontSize:16,color:C.ink}}>{sc.name}</div></button>)}</div>);
+  const start=async sc=>{setScenario(sc);setMsgs([]);setBusy(true);setApiErr(null);
+    try{const r=await callClaude([],null,sc);setMsgs([{who:"ai",...r}]);speak(r.chinese,r.pinyin);}
+    catch(e){setApiErr(e.message);setMsgs([{who:"ai",chinese:"你好！",pinyin:"nǐ hǎo!",english:"Hello! (Could not reach AI — check your ANTHROPIC_API_KEY in Vercel settings)",tip:null}]);}
+    setBusy(false);
+  };
+  const send=async()=>{if(!input.trim()||busy)return;const mine={who:"me",text:input.trim()};const history=[...msgs,mine];setMsgs(history);setInput("");setBusy(true);
+    try{const r=await callClaude(msgs,mine.text,scenario);setMsgs([...history,{who:"ai",...r}]);speak(r.chinese,r.pinyin);}
+    catch(e){setMsgs([...history,{who:"ai",chinese:"再说一遍？",pinyin:"zài shuō yí biàn?",english:"Connection issue. Check Vercel logs.",tip:null}]);}
+    setBusy(false);
+  };
+  if(!scenario)return(<div style={{display:"flex",flexDirection:"column",gap:12}}>
+    <div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,lineHeight:1.5}}>Practise real conversations. Reply in Chinese, pinyin, or English and get corrections.</div>
+    {SCENARIOS.map(sc=><button key={sc.id} onClick={()=>start(sc)} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:14,padding:"14px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",textAlign:"left"}}>
+      <div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:C.vermilion,width:52}}>{sc.zh}</div>
+      <div><div style={{fontFamily:UI,fontWeight:700,fontSize:15,color:C.ink}}>{sc.name}</div></div>
+    </button>)}
+  </div>);
   return(<div style={{display:"flex",flexDirection:"column",height:"100%",gap:10}}>
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><button onClick={()=>setScenario(null)} style={{background:"none",border:"none",fontFamily:UI,fontWeight:700,color:C.vermilion,fontSize:15,cursor:"pointer",padding:0}}>← Scenarios</button><div style={{fontFamily:UI,fontWeight:700,fontSize:14,color:C.inkSoft}}>{scenario.name}</div></div>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <button onClick={()=>setScenario(null)} style={{background:"none",border:"none",fontFamily:UI,fontWeight:700,color:C.vermilion,fontSize:15,cursor:"pointer",padding:0}}>← Scenarios</button>
+      <div style={{fontFamily:UI,fontWeight:700,fontSize:13,color:C.inkSoft}}>{scenario.name}</div>
+    </div>
+    {apiErr&&<div style={{background:"#FBF3E3",border:`1.5px solid ${C.gold}`,borderRadius:10,padding:10,fontFamily:UI,fontSize:12,color:C.ink}}>⚠️ API error: {apiErr}. Make sure ANTHROPIC_API_KEY is set in your Vercel environment variables.</div>}
     <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:10,paddingBottom:8}}>
-      {msgs.map((m,idx)=>m.who==="me"?<div key={idx} style={{alignSelf:"flex-end",maxWidth:"82%",background:C.ink,color:"#FFF8EE",borderRadius:"14px 14px 4px 14px",padding:"10px 14px",fontFamily:UI,fontSize:15}}>{m.text}</div>:<div key={idx} style={{alignSelf:"flex-start",maxWidth:"88%",display:"flex",flexDirection:"column",gap:6}}><div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:"14px 14px 14px 4px",padding:"12px 14px"}}><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{fontFamily:HAN,fontWeight:700,fontSize:20,color:C.ink,flex:1}}>{m.chinese}</div><SpeakBtn chinese={m.chinese} pinyin={m.pinyin}/></div>{showHelp[idx]?(<div style={{marginTop:6}}><div style={{fontFamily:UI,fontSize:14,color:C.vermilion,fontWeight:700}}>{m.pinyin}</div><div style={{fontFamily:UI,fontSize:14,color:C.inkSoft}}>{m.english}</div></div>):(<button onClick={()=>setShowHelp({...showHelp,[idx]:true})} style={{background:"none",border:"none",color:C.gold,fontFamily:UI,fontWeight:700,fontSize:13,cursor:"pointer",padding:"4px 0 0"}}>Show pinyin + translation</button>)}</div>{m.tip&&<div style={{fontFamily:UI,fontSize:13,color:C.jade,fontWeight:700,paddingLeft:4}}>✎ {m.tip}</div>}</div>)}
-      {busy&&<div style={{fontFamily:UI,fontSize:14,color:C.inkSoft}}>…thinking</div>}
+      {msgs.map((m,idx)=>m.who==="me"?
+        <div key={idx} style={{alignSelf:"flex-end",maxWidth:"82%",background:C.ink,color:"#FFF8EE",borderRadius:"14px 14px 4px 14px",padding:"10px 14px",fontFamily:UI,fontSize:15}}>{m.text}</div>:
+        <div key={idx} className="slideUp" style={{alignSelf:"flex-start",maxWidth:"90%",display:"flex",flexDirection:"column",gap:4}}>
+          <div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:"14px 14px 14px 4px",padding:"12px 14px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><div style={{fontFamily:HAN,fontWeight:700,fontSize:22,color:C.ink,flex:1}}>{m.chinese}</div><SpeakBtn chinese={m.chinese} pinyin={m.pinyin}/></div>
+            <div style={{fontFamily:UI,fontSize:15,color:C.vermilion,fontWeight:700}}>{m.pinyin}</div>
+            {showHelp[idx]?<div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginTop:4}}>{m.english}</div>:<button onClick={()=>setShowHelp({...showHelp,[idx]:true})} style={{background:"none",border:"none",color:C.gold,fontFamily:UI,fontWeight:700,fontSize:13,cursor:"pointer",padding:"4px 0 0",textAlign:"left"}}>Show translation</button>}
+          </div>
+          {m.tip&&<div style={{fontFamily:UI,fontSize:13,color:C.jade,fontWeight:700,paddingLeft:4}}>✎ {m.tip}</div>}
+        </div>
+      )}
+      {busy&&<div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,animation:'pulse 1s infinite'}}>…thinking</div>}
       <div ref={bottomRef}/>
     </div>
-    <div style={{display:"flex",gap:8}}><input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Reply in Chinese, pinyin or English…" style={{flex:1,fontFamily:UI,fontSize:15,padding:"12px 14px",borderRadius:12,border:`1.5px solid ${C.line}`,background:C.card,color:C.ink,outline:"none"}}/><button onClick={send} disabled={busy} style={{background:C.vermilion,color:"#FFF8EE",border:"none",borderRadius:12,padding:"0 18px",fontFamily:UI,fontWeight:700,fontSize:15,cursor:"pointer",opacity:busy?0.5:1}}>Send</button></div>
+    <div style={{display:"flex",gap:8}}>
+      <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Reply in Chinese, pinyin or English…" style={{flex:1,fontFamily:UI,fontSize:15,padding:"12px 14px",borderRadius:12,border:`1.5px solid ${C.line}`,background:C.card,color:C.ink,outline:"none"}}/>
+      <button onClick={send} disabled={busy} style={{background:C.vermilion,color:"#FFF8EE",border:"none",borderRadius:12,padding:"0 18px",fontFamily:UI,fontWeight:700,fontSize:15,cursor:"pointer",opacity:busy?0.5:1}}>Send</button>
+    </div>
   </div>);
 }
+
+// ── Translate view (NEW) ──────────────────────────────────────────────
+function TranslateView(){
+  const[input,setInput]=useState(""),[result,setResult]=useState(null),[busy,setBusy]=useState(false),[history,setHistory]=useState([]);
+  const translate=async()=>{
+    if(!input.trim()||busy)return;
+    setBusy(true);setResult(null);
+    try{
+      const prompt=`Translate the following text. Detect the language automatically — if it is English translate to Chinese, if it is Chinese translate to English.\n\nText: "${input.trim()}"\n\nRespond ONLY with valid JSON:\n{"chinese":"simplified Chinese","pinyin":"full pinyin with tone marks","english":"English translation","approx":"rough English sound-alike pronunciation (e.g. nee how for 你好)","example_cn":"a short example sentence using this in Chinese","example_en":"English translation of the example sentence"}`;
+      const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:500,messages:[{role:'user',content:prompt}]})});
+      const data=await res.json();
+      if(data.error)throw new Error(data.error.message);
+      const text=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+      const r=JSON.parse(text.replace(/```json|```/g,"").trim());
+      setResult(r);
+      setHistory(h=>[{input:input.trim(),...r},...h].slice(0,20));
+    }catch(e){setResult({error:e.message});}
+    setBusy(false);
+  };
+  return(<div style={{display:"flex",flexDirection:"column",gap:14}}>
+    <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.ink}}>翻译 Translate</div>
+    <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>Type anything in English or Chinese.</div>
+    <div style={{display:"flex",gap:8}}>
+      <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&translate()} placeholder="Type English or Chinese…" style={{flex:1,fontFamily:UI,fontSize:15,padding:"12px 14px",borderRadius:12,border:`1.5px solid ${C.line}`,background:C.card,color:C.ink,outline:"none"}}/>
+      <button onClick={translate} disabled={busy} style={{background:C.vermilion,color:"#FFF8EE",border:"none",borderRadius:12,padding:"0 16px",fontFamily:UI,fontWeight:700,fontSize:15,cursor:"pointer",opacity:busy?0.5:1}}>{busy?"…":"Go"}</button>
+    </div>
+    {result&&!result.error&&<div className="slideUp" style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:20,display:"flex",flexDirection:"column",gap:12}}>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
+        <div style={{flex:1}}>
+          <div style={{fontFamily:HAN,fontWeight:900,fontSize:36,color:C.ink,lineHeight:1.2}}>{result.chinese}</div>
+          <div style={{fontFamily:UI,fontSize:18,color:C.vermilion,fontWeight:700,marginTop:4}}>{result.pinyin}</div>
+          <ToneBar pinyin={result.pinyin}/>
+        </div>
+        <SpeakBtn chinese={result.chinese} pinyin={result.pinyin} big/>
+      </div>
+      {result.approx&&<div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,fontStyle:'italic'}}>🗣 sounds like: "{result.approx}"</div>}
+      <div style={{fontFamily:UI,fontSize:16,color:C.ink,fontWeight:700,borderTop:`1px solid ${C.line}`,paddingTop:10}}>{result.english}</div>
+      {result.example_cn&&<div style={{background:C.paper,borderRadius:10,padding:12}}>
+        <div style={{fontFamily:UI,fontSize:11,letterSpacing:1,color:C.inkSoft,marginBottom:4}}>EXAMPLE</div>
+        <div style={{fontFamily:HAN,fontWeight:700,fontSize:16,color:C.ink}}>{result.example_cn}</div>
+        <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,marginTop:2}}>{result.example_en}</div>
+      </div>}
+    </div>}
+    {result?.error&&<div style={{background:"#FBF3E3",borderRadius:12,padding:14,fontFamily:UI,fontSize:13,color:C.ink}}>⚠️ {result.error}. Check your ANTHROPIC_API_KEY in Vercel settings.</div>}
+    {history.length>0&&<div>
+      <div style={{fontFamily:UI,fontSize:12,letterSpacing:1.5,color:C.inkSoft,marginBottom:8}}>RECENT</div>
+      {history.slice(0,5).map((h,i)=><button key={i} onClick={()=>{setInput(h.input);setResult(h);}} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:10,padding:"10px 12px",width:"100%",textAlign:"left",marginBottom:6,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>{h.input}</span>
+        <span style={{fontFamily:HAN,fontWeight:700,fontSize:14,color:C.ink}}>{h.chinese}</span>
+      </button>)}
+    </div>}
+  </div>);
+}
+
+// ── App shell ─────────────────────────────────────────────────────────
 function App(){
   const[tab,setTab]=useState("today"),[state,setState]=useState(null);
   useEffect(()=>{setState(loadState());},[]);
   if(!state)return <div style={{minHeight:"100vh",background:C.paper,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:UI,color:C.inkSoft}}>Loading…</div>;
-  const tabs=[{id:"today",zh:"今",label:"Today"},{id:"decks",zh:"词",label:"Decks"},{id:"quiz",zh:"测",label:"Quiz"},{id:"speak",zh:"说",label:"Speak"}];
+  const tabs=[{id:"today",zh:"今",label:"Today"},{id:"decks",zh:"词",label:"Decks"},{id:"quiz",zh:"测",label:"Quiz"},{id:"speak",zh:"说",label:"Speak"},{id:"trans",zh:"译",label:"Translate"}];
   return(<div style={{minHeight:"100vh",background:C.paper,display:"flex",flexDirection:"column"}}>
-    <header style={{padding:"18px 20px 10px",display:"flex",alignItems:"center",gap:12,borderBottom:`1.5px solid ${C.line}`}}>
-      <Seal char="学" size={38} rotate={-4}/>
-      <div><div style={{fontFamily:HAN,fontWeight:900,fontSize:19,color:C.ink,lineHeight:1.1}}>路上中文</div><div style={{fontFamily:UI,fontSize:11.5,letterSpacing:1.5,color:C.inkSoft}}>MANDARIN FOR THE ROAD</div></div>
+    <header style={{padding:"14px 18px 10px",display:"flex",alignItems:"center",gap:10,borderBottom:`1.5px solid ${C.line}`,background:C.card}}>
+      <Seal char="学" size={36} rotate={-4}/>
+      <div style={{flex:1}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:18,color:C.ink,lineHeight:1.1}}>路上中文</div>
+        <div style={{fontFamily:UI,fontSize:10,letterSpacing:1.5,color:C.inkSoft}}>MANDARIN FOR THE ROAD</div>
+      </div>
+      <LanternSVG size={32}/>
     </header>
-    <main style={{flex:1,padding:"18px 16px 90px",maxWidth:560,width:"100%",margin:"0 auto",display:"flex",flexDirection:"column"}}>
+    <main style={{flex:1,padding:"16px 14px 88px",maxWidth:560,width:"100%",margin:"0 auto",display:"flex",flexDirection:"column"}}>
       {tab==="today"&&<TodayView state={state} setState={setState}/>}
       {tab==="decks"&&<DecksView state={state} setState={setState}/>}
       {tab==="quiz"&&<QuizView state={state} setState={setState}/>}
       {tab==="speak"&&<SpeakView/>}
+      {tab==="trans"&&<TranslateView/>}
     </main>
-    <nav style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1.5px solid ${C.line}`,display:"flex",justifyContent:"space-around",padding:"8px 0 14px"}}>
-      {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,width:70}}><div style={{fontFamily:HAN,fontWeight:900,fontSize:21,color:tab===t.id?"#FFF8EE":C.inkSoft,background:tab===t.id?C.vermilion:"transparent",width:34,height:34,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",transform:tab===t.id?"rotate(-3deg)":"none"}}>{t.zh}</div><div style={{fontFamily:UI,fontSize:11,fontWeight:700,color:tab===t.id?C.ink:C.inkSoft}}>{t.label}</div></button>)}
+    <nav style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1.5px solid ${C.line}`,display:"flex",justifyContent:"space-around",padding:"6px 0 12px",zIndex:100}}>
+      {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:1,minWidth:52}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:tab===t.id?"#FFF8EE":C.inkSoft,background:tab===t.id?C.vermilion:"transparent",width:32,height:32,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",transform:tab===t.id?"rotate(-4deg)":"none",transition:'all 0.2s'}}>{t.zh}</div>
+        <div style={{fontFamily:UI,fontSize:10,fontWeight:700,color:tab===t.id?C.ink:C.inkSoft}}>{t.label}</div>
+      </button>)}
     </nav>
   </div>);
 }
