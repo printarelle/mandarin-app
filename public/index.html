@@ -405,7 +405,9 @@ async function speakLang(text, lang='zh-CN', pinyin=null){
 document.addEventListener('touchstart',()=>{try{getAC().resume();}catch(e){}},{once:true,passive:true});
 
 // ── State ─────────────────────────────────────────────────────────────
-const DEF={cards:{},streak:0,lastStudy:null,studyHistory:{},reviewsToday:0,reviewsDate:null,newPerDay:8,quizBest:0,toneBest:0,totalReviews:0};
+const DEF={cards:{},streak:0,lastStudy:null,studyHistory:{},reviewsToday:0,reviewsDate:null,newPerDay:8,quizBest:0,toneBest:0,totalReviews:0,todaysCards:[],customPhrases:[]};
+// Combine built-in + user-generated phrases
+function getAllPhrases(state){ return [...PHRASES,...(state.customPhrases||[])]; }
 function loadState(){try{const r=store.get('mand2');if(r?.value)return{...DEF,...JSON.parse(r.value)};}catch(e){}return{...DEF};}
 function saveState(s){store.set('mand2',JSON.stringify(s));}
 
@@ -471,7 +473,9 @@ function ToneBar({pinyin}){
 function ReviewSession({queue,state,setState,onDone}){
   const[i,setI]=useState(0),[revealed,setRevealed]=useState(false);
   const card=queue[i];if(!card)return null;
-  const phrase=PHRASES[card.id];
+  const allPh=getAllPhrases(state);
+  const phrase=allPh[card.id];
+  if(!phrase)return null;
   const grade=g=>{
     const cur=state.cards[card.id]||{lvl:0};
     const lvl=g==="again"?0:g==="good"?Math.min(cur.lvl+1,5):Math.min(cur.lvl+2,5);
@@ -479,7 +483,9 @@ function ReviewSession({queue,state,setState,onDone}){
     const t=todayStr();
     const totalReviews=(state.totalReviews||0)+1;
     const history={...state.studyHistory,[t]:(state.studyHistory?.[t]||0)+1};
-    const next={...state,cards:{...state.cards,[card.id]:{lvl,due}},totalReviews,studyHistory:history,reviewsToday:(state.reviewsDate===t?state.reviewsToday:0)+1,reviewsDate:t};
+    const todaysCards=[...(state.todaysCards||[])];
+    if(!todaysCards.includes(card.id))todaysCards.push(card.id);
+    const next={...state,cards:{...state.cards,[card.id]:{lvl,due}},totalReviews,studyHistory:history,todaysCards,reviewsToday:(state.reviewsDate===t?state.reviewsToday:0)+1,reviewsDate:t};
     if(next.lastStudy!==t){next.streak=next.lastStudy&&daysBetween(next.lastStudy,t)===1?next.streak+1:1;next.lastStudy=t;}
     setState(next);saveState(next);setRevealed(false);
     if(i+1>=queue.length)onDone(next);else setI(i+1);
@@ -512,71 +518,164 @@ function ReviewSession({queue,state,setState,onDone}){
 }
 
 // ── Today view ────────────────────────────────────────────────────────
+function GeneratePhrases({state,setState}){
+  const[topic,setTopic]=useState(""),[busy,setBusy]=useState(false),[msg,setMsg]=useState(null);
+  const generate=async()=>{
+    if(!topic.trim()||busy)return;
+    setBusy(true);setMsg(null);
+    try{
+      const prompt=`Generate 8 useful Mandarin travel phrases for the topic: "${topic.trim()}". Context: the learner is visiting Chengdu, Chongqing and Xi'an in China.\nReturn ONLY a valid JSON array, no markdown, no extra text:\n[{"c":"simplified Chinese","p":"pinyin with tone marks","e":"English meaning","approx":"rough English pronunciation like nee how"}]`;
+      const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:800,messages:[{role:'user',content:prompt}]})});
+      const data=await res.json();
+      if(data.error)throw new Error(data.error.message);
+      const text=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+      const phrases=JSON.parse(text.replace(/```json|```/g,"").trim());
+      const existing=state.customPhrases||[];
+      const startId=PHRASES.length+existing.length;
+      const newPhrases=phrases.map((p,i)=>({...p,d:"custom",id:startId+i}));
+      const next={...state,customPhrases:[...existing,...newPhrases]};
+      setState(next);saveState(next);
+      setMsg(`Added ${newPhrases.length} phrases for "${topic.trim()}"!`);
+      setTopic("");
+    }catch(e){setMsg("Error: "+e.message);}
+    setBusy(false);
+  };
+  return(<div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:14,padding:14}}>
+    <div style={{fontFamily:UI,fontWeight:700,fontSize:14,color:C.ink,marginBottom:8}}>✨ Generate new phrases</div>
+    <div style={{fontFamily:UI,fontSize:12,color:C.inkSoft,marginBottom:10}}>Type any topic and Claude will create 8 phrases tailored to your China trip.</div>
+    <div style={{display:"flex",gap:8}}>
+      <input value={topic} onChange={e=>setTopic(e.target.value)} onKeyDown={e=>e.key==="Enter"&&generate()} placeholder="e.g. panda sanctuary, night market, temple visit…" style={{flex:1,fontFamily:UI,fontSize:14,padding:"9px 12px",borderRadius:10,border:`1.5px solid ${C.line}`,background:C.paper,color:C.ink,outline:"none"}}/>
+      <button onClick={generate} disabled={busy||!topic.trim()} style={{background:C.jade,color:"#FFF8EE",border:"none",borderRadius:10,padding:"0 14px",fontFamily:UI,fontWeight:700,fontSize:14,cursor:"pointer",opacity:(busy||!topic.trim())?0.5:1}}>{busy?"…":"Add"}</button>
+    </div>
+    {msg&&<div style={{fontFamily:UI,fontSize:13,color:msg.startsWith("Error")?C.vermilion:C.jade,marginTop:8,fontWeight:700}}>{msg}</div>}
+    {(state.customPhrases||[]).length>0&&<div style={{fontFamily:UI,fontSize:12,color:C.inkSoft,marginTop:8}}>{state.customPhrases.length} custom phrases generated so far · shown in Decks under Custom</div>}
+  </div>);
+}
 function TodayView({state,setState}){
-  const[session,setSession]=useState(null),[settingsOpen,setSettingsOpen]=useState(false);
+  const[session,setSession]=useState(null),[settingsOpen,setSettingsOpen]=useState(false),[showGenerate,setShowGenerate]=useState(false);
   const t=todayStr();
-  const dueIds=PHRASES.map((_,id)=>id).filter(id=>{const c=state.cards[id];return c&&c.due<=t;});
-  const newIds=PHRASES.map((_,id)=>id).filter(id=>!state.cards[id]).slice(0,state.newPerDay);
-  const learned=Object.keys(state.cards).length,mastered=Object.values(state.cards).filter(c=>c.lvl>=4).length;
-  const days=last7Days();
-  const weekStudied=days.filter(d=>state.studyHistory?.[d]>0).length;
+  const allPh=getAllPhrases(state);
+  const dueIds=allPh.map((_,id)=>id).filter(id=>{const c=state.cards[id];return c&&c.due<=t;});
+  const newIds=allPh.map((_,id)=>id).filter(id=>!state.cards[id]).slice(0,state.newPerDay);
+  const learnedIds=Object.keys(state.cards).map(Number);
+  const weakIds=learnedIds.filter(id=>state.cards[id]&&state.cards[id].lvl<=1);
+  const todayIds=(state.todaysCards||[]).filter(id=>state.cards[id]);
+  const learned=learnedIds.length,mastered=Object.values(state.cards).filter(c=>c.lvl>=4).length;
+  const days=last7Days(),weekStudied=days.filter(d=>state.studyHistory?.[d]>0).length;
+
   if(session&&session!=="done")return <ReviewSession queue={session} state={state} setState={setState} onDone={()=>setSession("done")}/>;
-  const startSession=()=>{const q=[...dueIds.map(id=>({id})),...newIds.map(id=>({id}))];if(q.length)setSession(q);};
-  return(<div style={{display:"flex",flexDirection:"column",gap:18}}>
+
+  const startSession=(ids)=>{
+    if(!ids.length)return;
+    const shuffled=[...ids].sort(()=>Math.random()-0.5);
+    setSession(shuffled.map(id=>({id})));
+  };
+
+  const SESSION_MODES=[
+    {
+      id:"main",
+      label: dueIds.length||newIds.length?"Start today's session":"All done for today",
+      sub: dueIds.length||newIds.length?`${dueIds.length} review · ${newIds.length} new`:"New reviews appear tomorrow based on your ratings",
+      color:C.vermilion,
+      disabled:!dueIds.length&&!newIds.length,
+      ids:[...dueIds,...newIds],
+      icon:"📚",
+    },
+    {
+      id:"repeat",
+      label:"Repeat today",
+      sub:todayIds.length?`Re-study ${todayIds.length} cards from today`:"Study something first",
+      color:C.sky,
+      disabled:!todayIds.length,
+      ids:todayIds,
+      icon:"🔄",
+    },
+    {
+      id:"weak",
+      label:"Weak cards",
+      sub:weakIds.length?`${weakIds.length} cards marked Again or low confidence`:"No weak cards yet",
+      color:C.gold,
+      disabled:!weakIds.length,
+      ids:weakIds,
+      icon:"💪",
+    },
+    {
+      id:"random",
+      label:"Random drill",
+      sub:learnedIds.length>=5?`Shuffle ${Math.min(20,learnedIds.length)} cards from everything you know`:"Learn at least 5 cards first",
+      color:C.jade,
+      disabled:learnedIds.length<5,
+      ids:learnedIds.slice().sort(()=>Math.random()-0.5).slice(0,20),
+      icon:"🎲",
+    },
+  ];
+
+  return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
     <DragonWaveSVG/>
     {/* Streak header */}
-    <div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:18,display:'flex',gap:16,alignItems:'center'}}>
-      <div style={{position:'relative'}}><Seal char={String(state.streak||0)} size={72}/><div style={{position:'absolute',bottom:-6,right:-6}}><LanternSVG size={22}/></div></div>
+    <div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:16,display:'flex',gap:14,alignItems:'center'}}>
+      <div style={{position:'relative'}}><Seal char={String(state.streak||0)} size={68}/><div style={{position:'absolute',bottom:-6,right:-6}}><LanternSVG size={22}/></div></div>
       <div style={{flex:1}}>
-        <div style={{fontFamily:UI,fontWeight:700,fontSize:18,color:C.ink}}>{state.streak||0} day streak</div>
-        <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,marginBottom:8}}>{state.lastStudy===t?"Today's session done · 加油!":"Study today to extend your streak"}</div>
-        {/* 7-day calendar dots */}
-        <div style={{display:'flex',gap:5}}>
-          {days.map(d=>{const done=state.studyHistory?.[d]>0;const isToday=d===t;return<div key={d} style={{width:28,height:28,borderRadius:8,background:done?C.vermilion:C.paper,border:`1.5px solid ${done?C.vermilion:C.line}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontFamily:UI,fontWeight:700,color:done?'#FFF8EE':C.inkSoft,outline:isToday?`2px solid ${C.gold}`:undefined}}>
-            {done?'✓':d.slice(8)}
-          </div>;})}
+        <div style={{fontFamily:UI,fontWeight:700,fontSize:17,color:C.ink}}>{state.streak||0} day streak</div>
+        <div style={{fontFamily:UI,fontSize:12,color:C.inkSoft,marginBottom:8}}>{state.lastStudy===t?"Today's session done · 加油!":"Study today to extend your streak"}</div>
+        <div style={{display:'flex',gap:4}}>
+          {days.map(d=>{const done=state.studyHistory?.[d]>0,isToday=d===t;return<div key={d} style={{width:26,height:26,borderRadius:7,background:done?C.vermilion:C.paper,border:`1.5px solid ${done?C.vermilion:C.line}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontFamily:UI,fontWeight:700,color:done?'#FFF8EE':C.inkSoft,outline:isToday?`2px solid ${C.gold}`:"none"}}>{done?'✓':d.slice(8)}</div>;})}
         </div>
       </div>
     </div>
-    {session==="done"&&<div className="pop" style={{background:C.jade,color:"#FFF8EE",borderRadius:12,padding:16,fontFamily:UI,fontWeight:700,textAlign:'center',fontSize:16}}>🎉 Session complete · 很好! Come back tomorrow!</div>}
-    {/* Session card */}
-    <div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:20}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
-        <div style={{fontFamily:UI,fontSize:12,letterSpacing:1.5,color:C.inkSoft}}>TODAY'S SESSION</div>
-        <button onClick={()=>setSettingsOpen(!settingsOpen)} style={{background:'none',border:'none',fontFamily:UI,fontSize:12,color:C.gold,fontWeight:700,cursor:'pointer'}}>⚙ {state.newPerDay}/day</button>
-      </div>
-      {settingsOpen&&<div style={{background:C.paper,borderRadius:10,padding:12,marginBottom:14,display:'flex',flexWrap:'wrap',gap:8,alignItems:'center'}}>
-        <span style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>New phrases per day:</span>
-        {[5,8,12,20].map(n=><button key={n} onClick={()=>{const next={...state,newPerDay:n};setState(next);saveState(next);setSettingsOpen(false);}} style={{background:state.newPerDay===n?C.ink:C.card,color:state.newPerDay===n?'#FFF8EE':C.ink,border:`1.5px solid ${C.line}`,borderRadius:8,padding:'6px 12px',fontFamily:UI,fontWeight:700,fontSize:14,cursor:'pointer'}}>{n}</button>)}
-      </div>}
-      <div style={{display:"flex",gap:20,marginBottom:18}}>
-        <div><div style={{fontFamily:HAN,fontWeight:900,fontSize:32,color:C.vermilion}}>{dueIds.length}</div><div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>to review</div></div>
-        <div><div style={{fontFamily:HAN,fontWeight:900,fontSize:32,color:C.ink}}>{newIds.length}</div><div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>new phrases</div></div>
-      </div>
-      {dueIds.length||newIds.length?<Btn full bg={C.vermilion} color="#FFF8EE" border={false} onClick={startSession}>Start studying →</Btn>:<div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,textAlign:'center',padding:'8px 0'}}>All done! New reviews appear tomorrow based on your ratings.</div>}
+
+    {session==="done"&&<div className="pop" style={{background:C.jade,color:"#FFF8EE",borderRadius:12,padding:14,fontFamily:UI,fontWeight:700,textAlign:'center'}}>🎉 Session complete · 很好!</div>}
+
+    {/* Settings row */}
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+      <div style={{fontFamily:UI,fontSize:12,letterSpacing:1.5,color:C.inkSoft}}>STUDY SESSION</div>
+      <button onClick={()=>setSettingsOpen(!settingsOpen)} style={{background:'none',border:'none',fontFamily:UI,fontSize:12,color:C.gold,fontWeight:700,cursor:'pointer'}}>⚙ {state.newPerDay} new/day</button>
     </div>
+    {settingsOpen&&<div style={{background:C.paper,borderRadius:10,padding:12,display:'flex',flexWrap:'wrap',gap:8,alignItems:'center'}}>
+      <span style={{fontFamily:UI,fontSize:13,color:C.inkSoft,width:'100%'}}>New phrases per day:</span>
+      {[5,8,12,20,30].map(n=><button key={n} onClick={()=>{const next={...state,newPerDay:n};setState(next);saveState(next);setSettingsOpen(false);}} style={{background:state.newPerDay===n?C.ink:C.card,color:state.newPerDay===n?'#FFF8EE':C.ink,border:`1.5px solid ${C.line}`,borderRadius:8,padding:'6px 12px',fontFamily:UI,fontWeight:700,fontSize:14,cursor:'pointer'}}>{n}</button>)}
+    </div>}
+
+    {/* Session mode cards */}
+    {SESSION_MODES.map(m=>(
+      <button key={m.id} disabled={m.disabled} onClick={()=>startSession(m.ids)} style={{background:C.card,border:`1.5px solid ${m.disabled?C.line:m.color}`,borderRadius:14,padding:"14px 16px",display:"flex",alignItems:"center",gap:14,cursor:m.disabled?"default":"pointer",textAlign:"left",opacity:m.disabled?0.55:1,width:"100%"}}>
+        <div style={{fontSize:26,width:36}}>{m.icon}</div>
+        <div style={{flex:1}}>
+          <div style={{fontFamily:UI,fontWeight:700,fontSize:15,color:m.disabled?C.inkSoft:C.ink}}>{m.label}</div>
+          <div style={{fontFamily:UI,fontSize:12,color:C.inkSoft,marginTop:2}}>{m.sub}</div>
+        </div>
+        {!m.disabled&&<div style={{fontFamily:HAN,fontWeight:900,fontSize:18,color:m.color}}>›</div>}
+      </button>
+    ))}
+
     {/* Stats */}
-    <div style={{display:"flex",gap:10}}>
-      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:12,textAlign:"center"}}>
-        <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.ink}}>{learned}<span style={{fontSize:13,color:C.inkSoft}}>/{PHRASES.length}</span></div>
-        <div style={{fontFamily:UI,fontSize:11,color:C.inkSoft}}>started</div>
+    <div style={{display:"flex",gap:8}}>
+      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:11,padding:11,textAlign:"center"}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:C.ink}}>{learned}<span style={{fontSize:12,color:C.inkSoft}}>/{allPh.length}</span></div>
+        <div style={{fontFamily:UI,fontSize:10,color:C.inkSoft}}>started</div>
       </div>
-      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:12,textAlign:"center"}}>
-        <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.jade}}>{mastered}</div>
-        <div style={{fontFamily:UI,fontSize:11,color:C.inkSoft}}>mastered 记</div>
+      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:11,padding:11,textAlign:"center"}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:C.jade}}>{mastered}</div>
+        <div style={{fontFamily:UI,fontSize:10,color:C.inkSoft}}>mastered</div>
       </div>
-      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:12,textAlign:"center"}}>
-        <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.gold}}>{weekStudied}</div>
-        <div style={{fontFamily:UI,fontSize:11,color:C.inkSoft}}>days this week</div>
+      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:11,padding:11,textAlign:"center"}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:C.gold}}>{weekStudied}</div>
+        <div style={{fontFamily:UI,fontSize:10,color:C.inkSoft}}>this week</div>
       </div>
-      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:12,textAlign:"center"}}>
-        <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.sky}}>{state.totalReviews||0}</div>
-        <div style={{fontFamily:UI,fontSize:11,color:C.inkSoft}}>total reviews</div>
+      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:11,padding:11,textAlign:"center"}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:C.sky}}>{state.totalReviews||0}</div>
+        <div style={{fontFamily:UI,fontSize:10,color:C.inkSoft}}>reviews</div>
       </div>
     </div>
+
+    {/* Generate phrases */}
+    <button onClick={()=>setShowGenerate(!showGenerate)} style={{background:"none",border:`1.5px dashed ${C.jade}`,borderRadius:12,padding:"10px 16px",fontFamily:UI,fontWeight:700,fontSize:14,color:C.jade,cursor:"pointer",textAlign:"left"}}>
+      {showGenerate?"▼":"▶"} ✨ Generate new phrases with AI
+    </button>
+    {showGenerate&&<GeneratePhrases state={state} setState={setState}/>}
   </div>);
 }
-
+// ── Decks view ────────────────────────────────────────────────────────
 // ── Decks view ────────────────────────────────────────────────────────
 function DecksView({state,setState}){
   const[open,setOpen]=useState(null),[session,setSession]=useState(null);
@@ -604,9 +703,15 @@ function DecksView({state,setState}){
   }
   return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
     {session==="done"&&<div className="pop" style={{background:C.jade,color:"#FFF8EE",borderRadius:12,padding:14,fontFamily:UI,fontWeight:700}}>Done! 很好!</div>}
+    {/* Custom deck if user has generated phrases */}
+    {(state.customPhrases||[]).length>0&&<button onClick={()=>setOpen("custom")} style={{background:C.card,border:`1.5px solid ${C.jade}`,borderRadius:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",textAlign:"left",width:"100%"}}>
+      <span style={{fontSize:22,width:30}}>✨</span>
+      <div style={{flex:1}}><div style={{fontFamily:UI,fontWeight:700,fontSize:15,color:C.ink}}>Custom phrases</div><div style={{height:4,background:C.line,borderRadius:2,marginTop:4}}><div style={{height:"100%",background:C.jade,borderRadius:2,width:"0%"}}/></div><div style={{fontFamily:UI,fontSize:11,color:C.inkSoft,marginTop:2}}>{state.customPhrases.length} AI-generated phrases</div></div><div style={{color:C.inkSoft}}>›</div>
+    </button>}
     {DECKS.map(d=>{
-      const items=PHRASES.filter(p=>p.d===d.id);
-      const done=items.filter(p=>{const id=PHRASES.indexOf(p);return state.cards[id]?.lvl>=4;}).length;
+      const allPh2=getAllPhrases(state);
+      const items=allPh2.filter(p=>p.d===d.id);
+      const done=items.filter(p=>{const id=allPh2.indexOf(p);return state.cards[id]?.lvl>=4;}).length;
       const pct=Math.round((done/items.length)*100);
       return <button key={d.id} onClick={()=>setOpen(d.id)} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",textAlign:"left"}}>
         <span style={{fontSize:22,width:30}}>{d.icon}</span>
