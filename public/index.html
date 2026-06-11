@@ -676,7 +676,7 @@ function TodayView({state,setState}){
     {/* Stats */}
     <div style={{display:"flex",gap:8}}>
       <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:11,padding:11,textAlign:"center"}}>
-        <div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:C.ink}}>{learned}<span style={{fontSize:12,color:C.inkSoft}}>/{allPh.length}</span></div>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:C.ink}}>{learned}<span style={{fontSize:12,color:C.inkSoft}}>/{getAllPhraseIds(state).length}</span></div>
         <div style={{fontFamily:UI,fontSize:10,color:C.inkSoft}}>started</div>
       </div>
       <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:11,padding:11,textAlign:"center"}}>
@@ -706,8 +706,9 @@ function DecksView({state,setState}){
   const[open,setOpen]=useState(null),[session,setSession]=useState(null);
   if(session&&session!=="done")return <ReviewSession queue={session} state={state} setState={setState} onDone={()=>setSession("done")}/>;
   if(open){
-    const allPh=getAllPhrases(state);
-    const items=allPh.map((p,id)=>({...p,id})).filter(p=>p.d===open);
+    const items=open.startsWith('set_')||open==='prev'||open==='migrated'
+      ? ((state.customSets||[]).find(s=>s.id===open)?.phrases||[]).map(p=>({...p}))
+      : PHRASES.map((p,id)=>({...p,id})).filter(p=>p.d===open);
     const customSet=(state.customSets||[]).find(s=>s.id===open);
     const deck=DECKS.find(d=>d.id===open)||(customSet?{id:open,name:customSet.topic,zh:"✨",icon:"✨"}:{id:"?",name:"Unknown",zh:"?",icon:"?"});
     return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -748,9 +749,8 @@ function DecksView({state,setState}){
       </button>;
     })}
     {DECKS.map(d=>{
-      const allPh2=getAllPhrases(state);
-      const items=allPh2.filter(p=>p.d===d.id);
-      const done=items.filter(p=>{const id=allPh2.indexOf(p);return state.cards[id]?.lvl>=4;}).length;
+      const items=PHRASES.filter(p=>p.d===d.id);
+      const done=items.filter(p=>{const id=PHRASES.indexOf(p);return state.cards[id]?.lvl>=4;}).length;
       const pct=Math.round((done/items.length)*100);
       return <button key={d.id} onClick={()=>setOpen(d.id)} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",textAlign:"left"}}>
         <span style={{fontSize:22,width:30}}>{d.icon}</span>
