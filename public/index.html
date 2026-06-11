@@ -919,7 +919,10 @@ function useSpeechInput(onResult){
             body:JSON.stringify({audio:b64,mimeType:'audio/webm'}),
           });
           const data=await res.json();
-          if(data.error)throw new Error(data.error);
+          if(data.error){
+            const msg=typeof data.error==='string'?data.error:(data.error?.message||JSON.stringify(data.error));
+            throw new Error(msg);
+          }
           if(data.text?.trim()){onResult(data.text.trim());setStatus('idle');}
           else{setErrMsg('No speech detected — try again');setStatus('error');}
         }catch(e){
