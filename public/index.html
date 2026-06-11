@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>路上中文</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700;900&family=Karla:wght@400;700&display=swap" rel="stylesheet">
+<style>*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}body{background:#F7F2E7;font-family:'Karla',sans-serif}button{cursor:pointer}</style>
+</head>
+<body>
+<div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#6B6357">Loading...</div></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel" data-presets="react">
+const {useState,useEffect,useRef}=React;
+const C={paper:"#F7F2E7",card:"#FFFCF4",ink:"#2B2722",inkSoft:"#6B6357",vermilion:"#C8372D",vermilionDark:"#A02A22",jade:"#3E7C59",gold:"#B98A2F",line:"#E5DCC8"};
+const HAN="'Noto Serif SC',serif",UI="'Karla',sans-serif";
+const store={get:k=>{try{const v=localStorage.getItem(k);return v?{value:v}:null;}catch(e){return null;}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}}};
+const INTERVALS=[0,1,3,7,14,30];
+const DECKS=[{id:"ess",name:"Essentials",zh:"基础"},{id:"food",name:"Food & Spice",zh:"吃饭"},{id:"trans",name:"Transport",zh:"交通"},{id:"hotel",name:"Hotel",zh:"酒店"},{id:"shop",name:"Shopping",zh:"买东西"},{id:"num",name:"Numbers",zh:"数字"},{id:"cd",name:"Chengdu",zh:"成都"},{id:"cq",name:"Chongqing",zh:"重庆"},{id:"xa",name:"Xi'an",zh:"西安"},{id:"emg",name:"Emergencies",zh:"紧急"}];
+const PHRASES=[
+{c:"你好",p:"nǐ hǎo",e:"Hello",d:"ess"},{c:"谢谢",p:"xièxie",e:"Thank you",d:"ess"},{c:"不好意思",p:"bù hǎo yìsi",e:"Excuse me",d:"ess"},{c:"请问",p:"qǐngwèn",e:"May I ask...",d:"ess"},{c:"我听不懂",p:"wǒ tīng bù dǒng",e:"I don't understand",d:"ess"},{c:"请说慢一点",p:"qǐng shuō màn yìdiǎn",e:"Please speak slower",d:"ess"},{c:"你会说英语吗",p:"nǐ huì shuō yīngyǔ ma",e:"Do you speak English?",d:"ess"},{c:"多少钱",p:"duōshao qián",e:"How much?",d:"ess"},{c:"我要这个",p:"wǒ yào zhège",e:"I want this one",d:"ess"},{c:"厕所在哪里",p:"cèsuǒ zài nǎlǐ",e:"Where is the toilet?",d:"ess"},{c:"没关系",p:"méi guānxi",e:"No problem",d:"ess"},{c:"对不起",p:"duìbuqǐ",e:"I'm sorry",d:"ess"},{c:"是",p:"shì",e:"Yes",d:"ess"},{c:"不是",p:"bú shì",e:"No",d:"ess"},{c:"好的",p:"hǎo de",e:"OK",d:"ess"},
+{c:"不要太辣",p:"bú yào tài là",e:"Not too spicy",d:"food"},{c:"微辣",p:"wēi là",e:"Mild spice",d:"food"},{c:"中辣",p:"zhōng là",e:"Medium spice",d:"food"},{c:"不辣",p:"bú là",e:"No spice",d:"food"},{c:"麻",p:"má",e:"Numbing pepper",d:"food"},{c:"火锅",p:"huǒguō",e:"Hotpot",d:"food"},{c:"鸳鸯锅",p:"yuānyāng guō",e:"Half-and-half hotpot",d:"food"},{c:"串串",p:"chuànchuàn",e:"Skewers",d:"food"},{c:"担担面",p:"dàndàn miàn",e:"Dan dan noodles",d:"food"},{c:"小面",p:"xiǎomiàn",e:"Chongqing noodles",d:"food"},{c:"一份",p:"yí fèn",e:"One portion",d:"food"},{c:"买单",p:"mǎidān",e:"The bill please",d:"food"},{c:"打包",p:"dǎbāo",e:"Takeaway",d:"food"},{c:"我不吃肉",p:"wǒ bù chī ròu",e:"I don't eat meat",d:"food"},{c:"好吃",p:"hǎochī",e:"Delicious",d:"food"},{c:"来一瓶水",p:"lái yì píng shuǐ",e:"A bottle of water",d:"food"},{c:"服务员",p:"fúwùyuán",e:"Waiter!",d:"food"},{c:"菜单",p:"càidān",e:"Menu",d:"food"},
+{c:"我要去",p:"wǒ yào qù",e:"I want to go to...",d:"trans"},{c:"请在这里停",p:"qǐng zài zhèlǐ tíng",e:"Please stop here",d:"trans"},{c:"地铁站在哪里",p:"dìtiě zhàn zài nǎlǐ",e:"Where is the metro?",d:"trans"},{c:"高铁",p:"gāotiě",e:"High-speed rail",d:"trans"},{c:"火车站",p:"huǒchē zhàn",e:"Train station",d:"trans"},{c:"机场",p:"jīchǎng",e:"Airport",d:"trans"},{c:"一张去西安的票",p:"yì zhāng qù Xī'ān de piào",e:"One ticket to Xi'an",d:"trans"},{c:"几点出发",p:"jǐ diǎn chūfā",e:"What time does it leave?",d:"trans"},{c:"出口",p:"chūkǒu",e:"Exit",d:"trans"},{c:"入口",p:"rùkǒu",e:"Entrance",d:"trans"},{c:"我在这里等你",p:"wǒ zài zhèlǐ děng nǐ",e:"Waiting here for you",d:"trans"},
+{c:"我有预订",p:"wǒ yǒu yùdìng",e:"I have a reservation",d:"hotel"},{c:"护照",p:"hùzhào",e:"Passport",d:"hotel"},{c:"退房",p:"tuìfáng",e:"Check out",d:"hotel"},{c:"行李寄存",p:"xíngli jìcún",e:"Luggage storage",d:"hotel"},{c:"WiFi密码是什么",p:"WiFi mìmǎ shì shénme",e:"WiFi password?",d:"hotel"},{c:"几楼",p:"jǐ lóu",e:"Which floor?",d:"hotel"},{c:"房间",p:"fángjiān",e:"Room",d:"hotel"},
+{c:"可以便宜一点吗",p:"kěyǐ piányi yìdiǎn ma",e:"Can you make it cheaper?",d:"shop"},{c:"太贵了",p:"tài guì le",e:"Too expensive",d:"shop"},{c:"可以用支付宝吗",p:"kěyǐ yòng Zhīfùbǎo ma",e:"Can I use Alipay?",d:"shop"},{c:"可以刷卡吗",p:"kěyǐ shuākǎ ma",e:"Can I pay by card?",d:"shop"},{c:"我看看",p:"wǒ kànkan",e:"Just looking",d:"shop"},{c:"块",p:"kuài",e:"Yuan (spoken)",d:"shop"},
+{c:"一",p:"yī",e:"1",d:"num"},{c:"二",p:"èr",e:"2",d:"num"},{c:"三",p:"sān",e:"3",d:"num"},{c:"四",p:"sì",e:"4",d:"num"},{c:"五",p:"wǔ",e:"5",d:"num"},{c:"六",p:"liù",e:"6",d:"num"},{c:"七",p:"qī",e:"7",d:"num"},{c:"八",p:"bā",e:"8",d:"num"},{c:"九",p:"jiǔ",e:"9",d:"num"},{c:"十",p:"shí",e:"10",d:"num"},{c:"百",p:"bǎi",e:"Hundred",d:"num"},{c:"二十五",p:"èrshíwǔ",e:"25",d:"num"},
+{c:"熊猫基地",p:"xióngmāo jīdì",e:"Panda Research Base",d:"cd"},{c:"宽窄巷子",p:"Kuānzhǎi Xiàngzi",e:"Kuanzhai Alley",d:"cd"},{c:"茶馆",p:"cháguǎn",e:"Teahouse",d:"cd"},{c:"人民公园",p:"Rénmín Gōngyuán",e:"People's Park",d:"cd"},
+{c:"洪崖洞",p:"Hóngyádòng",e:"Hongya Cave",d:"cq"},{c:"长江索道",p:"Chángjiāng suǒdào",e:"Yangtze cable car",d:"cq"},{c:"轻轨",p:"qīngguǐ",e:"Light rail",d:"cq"},{c:"解放碑",p:"Jiěfàngbēi",e:"Jiefangbei downtown",d:"cq"},
+{c:"兵马俑",p:"bīngmǎyǒng",e:"Terracotta Warriors",d:"xa"},{c:"回民街",p:"Huímín Jiē",e:"Muslim Quarter",d:"xa"},{c:"肉夹馍",p:"ròujiāmó",e:"Xi'an meat sandwich",d:"xa"},{c:"城墙",p:"chéngqiáng",e:"City wall",d:"xa"},{c:"凉皮",p:"liángpí",e:"Cold noodles",d:"xa"},
+{c:"救命",p:"jiùmìng",e:"Help!",d:"emg"},{c:"我需要医生",p:"wǒ xūyào yīshēng",e:"I need a doctor",d:"emg"},{c:"警察",p:"jǐngchá",e:"Police",d:"emg"},{c:"我迷路了",p:"wǒ mílù le",e:"I'm lost",d:"emg"}
+];
+const TONE_ITEMS=[{c:"妈",p:"mā",t:1},{c:"麻",p:"má",t:2},{c:"马",p:"mǎ",t:3},{c:"骂",p:"mà",t:4},{c:"汤",p:"tāng",t:1},{c:"糖",p:"táng",t:2},{c:"躺",p:"tǎng",t:3},{c:"烫",p:"tàng",t:4},{c:"八",p:"bā",t:1},{c:"拔",p:"bá",t:2},{c:"把",p:"bǎ",t:3},{c:"爸",p:"bà",t:4},{c:"吃",p:"chī",t:1},{c:"茶",p:"chá",t:2},{c:"你",p:"nǐ",t:3},{c:"是",p:"shì",t:4},{c:"天",p:"tiān",t:1},{c:"钱",p:"qián",t:2},{c:"买",p:"mǎi",t:3},{c:"卖",p:"mài",t:4}];
+const SCENARIOS=[{id:"hotpot",name:"Hotpot restaurant",zh:"火锅店",role:"a friendly waiter in a Chengdu hotpot restaurant"},{id:"taxi",name:"Didi driver",zh:"出租车",role:"a chatty Didi taxi driver in Chongqing"},{id:"hotel",name:"Hotel check-in",zh:"酒店",role:"a hotel receptionist in Xi'an"},{id:"market",name:"Market bargaining",zh:"市场",role:"a souvenir stall owner at the Muslim Quarter in Xi'an"},{id:"train",name:"Train station",zh:"车站",role:"a ticket clerk at Chengdu East railway station"}];
+const todayStr=()=>new Date().toISOString().slice(0,10);
+const daysBetween=(a,b)=>Math.round((new Date(b)-new Date(a))/86400000);
+// Web Audio tone fallback
+const TC={'ā':1,'á':2,'ǎ':3,'à':4,'ē':1,'é':2,'ě':3,'è':4,'ī':1,'í':2,'ǐ':3,'ì':4,'ō':1,'ó':2,'ǒ':3,'ò':4,'ū':1,'ú':2,'ǔ':3,'ù':4,'ǖ':1,'ǘ':2,'ǚ':3,'ǜ':4};
+function parseTones(py){return py.trim().split(/\s+/).map(s=>{for(const[ch,t] of Object.entries(TC))if(s.includes(ch))return t;return 0;});}
+let _ac=null;
+function getAC(){const Ctor=window.AudioContext||window.webkitAudioContext;if(!_ac||_ac.state==='closed')_ac=new Ctor();if(_ac.state==='suspended')_ac.resume();return _ac;}
+function toneShape(tone,off,dur){const ctx=getAC(),osc=ctx.createOscillator(),g=ctx.createGain();osc.type='sine';osc.connect(g);g.connect(ctx.destination);const[H,MH,M,L]=[320,265,210,160],t0=ctx.currentTime+off;g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(0.18,t0+0.04);g.gain.setValueAtTime(0.18,t0+dur-0.07);g.gain.linearRampToValueAtTime(0,t0+dur);switch(tone){case 1:osc.frequency.setValueAtTime(H,t0);break;case 2:osc.frequency.setValueAtTime(M,t0);osc.frequency.exponentialRampToValueAtTime(H,t0+dur);break;case 3:osc.frequency.setValueAtTime(MH,t0);osc.frequency.exponentialRampToValueAtTime(L,t0+dur*0.55);osc.frequency.exponentialRampToValueAtTime(MH,t0+dur);break;case 4:osc.frequency.setValueAtTime(H,t0);osc.frequency.exponentialRampToValueAtTime(L,t0+dur);break;default:osc.frequency.setValueAtTime(M,t0);}osc.start(t0);osc.stop(t0+dur+0.02);}
+function toneSound(py){parseTones(py).forEach((t,i)=>toneShape(t,i*0.38,0.32));}
+// Primary TTS via Vercel proxy + Web Audio decode
+async function speak(chinese,pinyin){
+  try{
+    const res=await fetch('/api/tts?text='+encodeURIComponent(chinese));
+    if(!res.ok)throw new Error();
+    const buf=await res.arrayBuffer();
+    const ctx=getAC();
+    const audio=await ctx.decodeAudioData(buf);
+    const src=ctx.createBufferSource();
+    src.buffer=audio;src.connect(ctx.destination);src.start(0);
+    return;
+  }catch(e){}
+  if(pinyin)toneSound(pinyin);
+}
+// State
+const DEF={cards:{},streak:0,lastStudy:null,reviewsToday:0,reviewsDate:null,newPerDay:8,quizBest:0,toneBest:0};
+function loadState(){try{const r=store.get('mand');if(r?.value)return{...DEF,...JSON.parse(r.value)};}catch(e){}return{...DEF};}
+function saveState(s){store.set('mand',JSON.stringify(s));}
+// UI components
+function Seal({char,size=64,rotate=-3}){return <div style={{width:size,height:size,background:C.vermilion,color:"#FFF8EE",fontFamily:HAN,fontWeight:900,fontSize:size*0.52,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:size*0.12,transform:`rotate(${rotate}deg)`,boxShadow:"0 2px 0 "+C.vermilionDark,lineHeight:1}}>{char}</div>;}
+function Btn({children,onClick,color=C.ink,bg="transparent",border=true,full,disabled,style:st}){return <button onClick={onClick} disabled={disabled} style={{fontFamily:UI,fontWeight:700,fontSize:15,color,background:bg,border:border?`1.5px solid ${bg!=="transparent"?bg:C.ink}`:"none",padding:"12px 18px",borderRadius:10,width:full?"100%":"auto",opacity:disabled?0.45:1,cursor:"pointer",...st}}>{children}</button>;}
+function SpeakBtn({chinese,pinyin,big}){return <button onClick={e=>{e.stopPropagation();speak(chinese,pinyin);}} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:"50%",width:big?52:40,height:big?52:40,fontSize:big?22:17,cursor:"pointer"}}>🔊</button>;}
+function ReviewSession({queue,state,setState,onDone}){
+  const[i,setI]=useState(0),[revealed,setRevealed]=useState(false);
+  const card=queue[i];if(!card)return null;
+  const phrase=PHRASES[card.id];
+  const grade=g=>{
+    const cur=state.cards[card.id]||{lvl:0};
+    const lvl=g==="again"?0:g==="good"?Math.min(cur.lvl+1,5):Math.min(cur.lvl+2,5);
+    const due=new Date(Date.now()+INTERVALS[lvl]*86400000).toISOString().slice(0,10);
+    const t=todayStr();
+    const next={...state,cards:{...state.cards,[card.id]:{lvl,due}},reviewsToday:(state.reviewsDate===t?state.reviewsToday:0)+1,reviewsDate:t};
+    if(next.lastStudy!==t){next.streak=next.lastStudy&&daysBetween(next.lastStudy,t)===1?next.streak+1:1;next.lastStudy=t;}
+    setState(next);saveState(next);setRevealed(false);
+    if(i+1>=queue.length)onDone(next);else setI(i+1);
+  };
+  return(<div style={{display:"flex",flexDirection:"column",gap:16,flex:1}}>
+    <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>CARD {i+1} OF {queue.length}</div>
+    <div onClick={()=>{setRevealed(true);speak(phrase.c,phrase.p);}} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:"40px 20px",textAlign:"center",cursor:"pointer",minHeight:260,display:"flex",flexDirection:"column",justifyContent:"center",gap:14}}>
+      <div style={{fontFamily:HAN,fontWeight:900,fontSize:phrase.c.length>5?34:48,color:C.ink}}>{phrase.c}</div>
+      {revealed?(<><div style={{fontFamily:UI,fontSize:20,color:C.vermilion,fontWeight:700}}>{phrase.p}</div><div style={{fontFamily:UI,fontSize:17,color:C.ink}}>{phrase.e}</div><div style={{alignSelf:"center"}}><SpeakBtn chinese={phrase.c} pinyin={phrase.p} big/></div></>):(<div style={{fontFamily:UI,fontSize:14,color:C.inkSoft}}>Tap to reveal and hear it</div>)}
+    </div>
+    {revealed?(<div style={{display:"flex",gap:10}}><Btn full bg={C.card} onClick={()=>grade("again")} style={{borderColor:C.vermilion,color:C.vermilion}}>Again</Btn><Btn full bg={C.ink} color="#FFF8EE" border={false} onClick={()=>grade("good")}>Good</Btn><Btn full bg={C.jade} color="#FFF8EE" border={false} onClick={()=>grade("easy")}>Easy</Btn></div>):<Btn full onClick={()=>{setRevealed(true);speak(phrase.c,phrase.p);}}>Show answer</Btn>}
+  </div>);
+}
+function TodayView({state,setState}){
+  const[session,setSession]=useState(null);const t=todayStr();
+  const dueIds=PHRASES.map((_,id)=>id).filter(id=>{const c=state.cards[id];return c&&c.due<=t;});
+  const newIds=PHRASES.map((_,id)=>id).filter(id=>!state.cards[id]).slice(0,state.newPerDay);
+  const learned=Object.keys(state.cards).length,mastered=Object.values(state.cards).filter(c=>c.lvl>=4).length;
+  if(session&&session!=="done")return <ReviewSession queue={session} state={state} setState={setState} onDone={()=>setSession("done")}/>;
+  return(<div style={{display:"flex",flexDirection:"column",gap:20}}>
+    <div style={{display:"flex",alignItems:"center",gap:16}}><Seal char={String(state.streak||0)} size={72}/><div><div style={{fontFamily:UI,fontWeight:700,fontSize:18,color:C.ink}}>{state.streak||0} day streak</div><div style={{fontFamily:UI,fontSize:14,color:C.inkSoft}}>{state.lastStudy===t?"You've studied today. 加油!":"Study today to keep your seal."}</div></div></div>
+    {session==="done"&&<div style={{background:C.jade,color:"#FFF8EE",borderRadius:12,padding:16,fontFamily:UI,fontWeight:700}}>Session complete. 很好!</div>}
+    <div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:20}}>
+      <div style={{fontFamily:UI,fontSize:13,letterSpacing:1.5,color:C.inkSoft}}>TODAY'S SESSION</div>
+      <div style={{display:"flex",gap:24,margin:"14px 0 18px"}}>
+        <div><div style={{fontFamily:HAN,fontWeight:900,fontSize:32,color:C.vermilion}}>{dueIds.length}</div><div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>to review</div></div>
+        <div><div style={{fontFamily:HAN,fontWeight:900,fontSize:32,color:C.ink}}>{newIds.length}</div><div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>new phrases</div></div>
+      </div>
+      <Btn full bg={C.vermilion} color="#FFF8EE" border={false} onClick={()=>{const q=[...dueIds.map(id=>({id})),...newIds.map(id=>({id}))];if(q.length)setSession(q);}} disabled={!dueIds.length&&!newIds.length}>{dueIds.length||newIds.length?"Start studying":"All done for today"}</Btn>
+    </div>
+    <div style={{display:"flex",gap:12}}>
+      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:14,textAlign:"center"}}><div style={{fontFamily:HAN,fontWeight:900,fontSize:24,color:C.ink}}>{learned}<span style={{fontSize:14,color:C.inkSoft}}>/{PHRASES.length}</span></div><div style={{fontFamily:UI,fontSize:12,color:C.inkSoft}}>started</div></div>
+      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:14,textAlign:"center"}}><div style={{fontFamily:HAN,fontWeight:900,fontSize:24,color:C.jade}}>{mastered}</div><div style={{fontFamily:UI,fontSize:12,color:C.inkSoft}}>mastered 记</div></div>
+    </div>
+  </div>);
+}
+function DecksView({state,setState}){
+  const[open,setOpen]=useState(null),[session,setSession]=useState(null);
+  if(session&&session!=="done")return <ReviewSession queue={session} state={state} setState={setState} onDone={()=>setSession("done")}/>;
+  if(open){const items=PHRASES.map((p,id)=>({...p,id})).filter(p=>p.d===open),deck=DECKS.find(d=>d.id===open);return(<div style={{display:"flex",flexDirection:"column",gap:10}}><button onClick={()=>setOpen(null)} style={{alignSelf:"flex-start",background:"none",border:"none",fontFamily:UI,fontWeight:700,color:C.vermilion,fontSize:15,cursor:"pointer",padding:0}}>← All decks</button><div style={{fontFamily:HAN,fontWeight:900,fontSize:26,color:C.ink}}>{deck.zh} <span style={{fontFamily:UI,fontWeight:700,fontSize:16,color:C.inkSoft}}>{deck.name}</span></div><Btn full bg={C.ink} color="#FFF8EE" border={false} onClick={()=>setSession(items.map(p=>({id:p.id})))}>Practise deck ({items.length})</Btn>{items.map(p=>(<div key={p.id} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:12}}><SpeakBtn chinese={p.c} pinyin={p.p}/><div style={{flex:1}}><div style={{fontFamily:HAN,fontWeight:700,fontSize:19,color:C.ink}}>{p.c}</div><div style={{fontFamily:UI,fontSize:13.5,color:C.vermilion}}>{p.p} <span style={{color:C.inkSoft}}>· {p.e}</span></div></div>{state.cards[p.id]?.lvl>=4&&<Seal char="记" size={28} rotate={4}/>}</div>))}</div>);}
+  return(<div style={{display:"flex",flexDirection:"column",gap:10}}>{session==="done"&&<div style={{background:C.jade,color:"#FFF8EE",borderRadius:12,padding:14,fontFamily:UI,fontWeight:700}}>Done! 很好!</div>}{DECKS.map(d=>{const items=PHRASES.filter(p=>p.d===d.id),done=items.filter(p=>{const id=PHRASES.indexOf(p);return state.cards[id]?.lvl>=4;}).length;return <button key={d.id} onClick={()=>setOpen(d.id)} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",textAlign:"left"}}><div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.vermilion,width:48}}>{d.zh}</div><div style={{flex:1}}><div style={{fontFamily:UI,fontWeight:700,fontSize:16,color:C.ink}}>{d.name}</div><div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>{done}/{items.length} mastered</div></div><div style={{color:C.inkSoft}}>›</div></button>;})}</div>);
+}
+function QuizView({state,setState}){
+  const[mode,setMode]=useState(null),[qs,setQs]=useState([]),[i,setI]=useState(0),[picked,setPicked]=useState(null),[score,setScore]=useState(0);
+  const startMeaning=()=>{const pool=[...PHRASES.keys()],questions=pool.sort(()=>Math.random()-0.5).slice(0,10).map(id=>{const wrong=pool.filter(x=>x!==id).sort(()=>Math.random()-0.5).slice(0,3);return{id,options:[id,...wrong].sort(()=>Math.random()-0.5)};});setQs(questions);setI(0);setScore(0);setPicked(null);setMode("meaning");};
+  const startTone=()=>{const questions=[...TONE_ITEMS].sort(()=>Math.random()-0.5).slice(0,10);setQs(questions);setI(0);setScore(0);setPicked(null);setMode("tone");setTimeout(()=>speak(questions[0].c,questions[0].p),400);};
+  const finish=(fs,kind)=>{const k=kind==="meaning"?"quizBest":"toneBest";if(fs>state[k]){const next={...state,[k]:fs};setState(next);saveState(next);}};
+  if(mode==="meaning"&&i<qs.length){const q=qs[i],phrase=PHRASES[q.id];return(<div style={{display:"flex",flexDirection:"column",gap:14}}><div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>Q{i+1}/10 · {score} correct</div><div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:28,textAlign:"center"}}><div style={{fontFamily:HAN,fontWeight:900,fontSize:36,color:C.ink,marginBottom:8}}>{phrase.c}</div><SpeakBtn chinese={phrase.c} pinyin={phrase.p}/><div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginTop:8}}>What does this mean?</div></div>{q.options.map(opt=>{let bg=C.card,col=C.ink,bord=C.line;if(picked!==null){if(opt===q.id){bg=C.jade;col="#FFF8EE";bord=C.jade;}else if(opt===picked){bg=C.vermilion;col="#FFF8EE";bord=C.vermilion;}}return <button key={opt} disabled={picked!==null} onClick={()=>{setPicked(opt);const ns=score+(opt===q.id?1:0);setTimeout(()=>{if(i+1>=qs.length){finish(ns,"meaning");setI(i+1);}else{setI(i+1);setPicked(null);setScore(ns);}},900);}} style={{background:bg,color:col,border:`1.5px solid ${bord}`,borderRadius:12,padding:"13px 16px",fontFamily:UI,fontWeight:700,fontSize:15,textAlign:"left",cursor:"pointer"}}>{PHRASES[opt].e}</button>;})}</div>);}
+  if(mode==="tone"&&i<qs.length){const q=qs[i],toneNames=["1st ¯ high flat","2nd ´ rising","3rd ˇ dip","4th ` falling"];return(<div style={{display:"flex",flexDirection:"column",gap:14}}><div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>TONE {i+1}/10 · {score} correct</div><div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:28,textAlign:"center"}}><div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginBottom:12}}>Listen — which tone?</div><button onClick={()=>speak(q.c,q.p)} style={{background:C.ink,color:"#FFF8EE",border:"none",borderRadius:"50%",width:72,height:72,fontSize:28,cursor:"pointer"}}>🔊</button>{picked!==null&&<div style={{marginTop:14,fontFamily:HAN,fontWeight:900,fontSize:26,color:C.ink}}>{q.c} <span style={{fontFamily:UI,fontWeight:700,fontSize:18,color:C.vermilion}}>{q.p}</span></div>}</div>{[1,2,3,4].map(t=>{let bg=C.card,col=C.ink,bord=C.line;if(picked!==null){if(t===q.t){bg=C.jade;col="#FFF8EE";bord=C.jade;}else if(t===picked){bg=C.vermilion;col="#FFF8EE";bord=C.vermilion;}}return <button key={t} disabled={picked!==null} onClick={()=>{setPicked(t);const ns=score+(t===q.t?1:0);setTimeout(()=>{if(i+1>=qs.length){finish(ns,"tone");setI(i+1);}else{setI(i+1);setPicked(null);setScore(ns);setTimeout(()=>speak(qs[i+1].c,qs[i+1].p),300);}},1100);}} style={{background:bg,color:col,border:`1.5px solid ${bord}`,borderRadius:12,padding:"13px 16px",fontFamily:UI,fontWeight:700,fontSize:15,textAlign:"left",cursor:"pointer"}}>{toneNames[t-1]}</button>;})}</div>);}
+  if(mode&&i>=qs.length)return(<div style={{display:"flex",flexDirection:"column",gap:16,alignItems:"center",paddingTop:30}}><Seal char={score>=8?"优":score>=5?"好":"练"} size={88} rotate={3}/><div style={{fontFamily:HAN,fontWeight:900,fontSize:40,color:C.ink}}>{score}/10</div><div style={{fontFamily:UI,fontSize:15,color:C.inkSoft,textAlign:"center"}}>{score>=8?"Excellent. 优 means outstanding.":score>=5?"Good work. Keep drilling.":"Tones take time. Try again."}</div><Btn full bg={C.vermilion} color="#FFF8EE" border={false} onClick={()=>setMode(null)}>Back to quizzes</Btn></div>);
+  return(<div style={{display:"flex",flexDirection:"column",gap:14}}><button onClick={startMeaning} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:20,textAlign:"left",cursor:"pointer"}}><div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.vermilion}}>词义 Meaning quiz</div><div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginTop:4}}>See a phrase, pick the English. Best: {state.quizBest}/10</div></button><button onClick={startTone} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:20,textAlign:"left",cursor:"pointer"}}><div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.vermilion}}>声调 Tone trainer</div><div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginTop:4}}>Listen and identify the tone. Best: {state.toneBest}/10</div></button></div>);
+}
+function SpeakView(){
+  const[scenario,setScenario]=useState(null),[msgs,setMsgs]=useState([]),[input,setInput]=useState(""),[busy,setBusy]=useState(false),[showHelp,setShowHelp]=useState({});
+  const bottomRef=useRef(null);
+  useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[msgs,busy]);
+  const callClaude=async(history,userText,sc)=>{
+    const convo=history.map(m=>m.who==="me"?`Learner: ${m.text}`:`You: ${m.chinese}`).join("\n");
+    const prompt=`You are roleplaying as ${sc.role}. The learner is an Irish beginner studying Mandarin for a trip to China. Speak VERY simple Mandarin (HSK1-2 level), 1-2 short sentences max.\n\nConversation so far:\n${convo||"(start — greet them naturally)"}\n\n${userText?`Learner: ${userText}`:""}\n\nRespond ONLY with valid JSON, no markdown:\n{"chinese":"your reply","pinyin":"pinyin with tones","english":"translation","tip":"short correction or null"}`;
+    const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();
+    const text=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+    return JSON.parse(text.replace(/```json|```/g,"").trim());
+  };
+  const start=async sc=>{setScenario(sc);setMsgs([]);setBusy(true);try{const r=await callClaude([],null,sc);setMsgs([{who:"ai",...r}]);speak(r.chinese,r.pinyin);}catch(e){setMsgs([{who:"ai",chinese:"出错了",pinyin:"chūcuò le",english:"Something went wrong.",tip:null}]);}setBusy(false);};
+  const send=async()=>{if(!input.trim()||busy)return;const mine={who:"me",text:input.trim()};const history=[...msgs,mine];setMsgs(history);setInput("");setBusy(true);try{const r=await callClaude(msgs,mine.text,scenario);setMsgs([...history,{who:"ai",...r}]);speak(r.chinese,r.pinyin);}catch(e){setMsgs([...history,{who:"ai",chinese:"再说一遍?",pinyin:"zài shuō yí biàn?",english:"Connection hiccup.",tip:null}]);}setBusy(false);};
+  if(!scenario)return(<div style={{display:"flex",flexDirection:"column",gap:12}}><div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,lineHeight:1.5}}>Practise real conversations. Reply in Chinese, pinyin, or English.</div>{SCENARIOS.map(sc=><button key={sc.id} onClick={()=>start(sc)} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:14,padding:"16px 18px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",textAlign:"left"}}><div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:C.vermilion,width:56}}>{sc.zh}</div><div style={{fontFamily:UI,fontWeight:700,fontSize:16,color:C.ink}}>{sc.name}</div></button>)}</div>);
+  return(<div style={{display:"flex",flexDirection:"column",height:"100%",gap:10}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><button onClick={()=>setScenario(null)} style={{background:"none",border:"none",fontFamily:UI,fontWeight:700,color:C.vermilion,fontSize:15,cursor:"pointer",padding:0}}>← Scenarios</button><div style={{fontFamily:UI,fontWeight:700,fontSize:14,color:C.inkSoft}}>{scenario.name}</div></div>
+    <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:10,paddingBottom:8}}>
+      {msgs.map((m,idx)=>m.who==="me"?<div key={idx} style={{alignSelf:"flex-end",maxWidth:"82%",background:C.ink,color:"#FFF8EE",borderRadius:"14px 14px 4px 14px",padding:"10px 14px",fontFamily:UI,fontSize:15}}>{m.text}</div>:<div key={idx} style={{alignSelf:"flex-start",maxWidth:"88%",display:"flex",flexDirection:"column",gap:6}}><div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:"14px 14px 14px 4px",padding:"12px 14px"}}><div style={{display:"flex",alignItems:"center",gap:10}}><div style={{fontFamily:HAN,fontWeight:700,fontSize:20,color:C.ink,flex:1}}>{m.chinese}</div><SpeakBtn chinese={m.chinese} pinyin={m.pinyin}/></div>{showHelp[idx]?(<div style={{marginTop:6}}><div style={{fontFamily:UI,fontSize:14,color:C.vermilion,fontWeight:700}}>{m.pinyin}</div><div style={{fontFamily:UI,fontSize:14,color:C.inkSoft}}>{m.english}</div></div>):(<button onClick={()=>setShowHelp({...showHelp,[idx]:true})} style={{background:"none",border:"none",color:C.gold,fontFamily:UI,fontWeight:700,fontSize:13,cursor:"pointer",padding:"4px 0 0"}}>Show pinyin + translation</button>)}</div>{m.tip&&<div style={{fontFamily:UI,fontSize:13,color:C.jade,fontWeight:700,paddingLeft:4}}>✎ {m.tip}</div>}</div>)}
+      {busy&&<div style={{fontFamily:UI,fontSize:14,color:C.inkSoft}}>…thinking</div>}
+      <div ref={bottomRef}/>
+    </div>
+    <div style={{display:"flex",gap:8}}><input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Reply in Chinese, pinyin or English…" style={{flex:1,fontFamily:UI,fontSize:15,padding:"12px 14px",borderRadius:12,border:`1.5px solid ${C.line}`,background:C.card,color:C.ink,outline:"none"}}/><button onClick={send} disabled={busy} style={{background:C.vermilion,color:"#FFF8EE",border:"none",borderRadius:12,padding:"0 18px",fontFamily:UI,fontWeight:700,fontSize:15,cursor:"pointer",opacity:busy?0.5:1}}>Send</button></div>
+  </div>);
+}
+function App(){
+  const[tab,setTab]=useState("today"),[state,setState]=useState(null);
+  useEffect(()=>{setState(loadState());},[]);
+  if(!state)return <div style={{minHeight:"100vh",background:C.paper,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:UI,color:C.inkSoft}}>Loading…</div>;
+  const tabs=[{id:"today",zh:"今",label:"Today"},{id:"decks",zh:"词",label:"Decks"},{id:"quiz",zh:"测",label:"Quiz"},{id:"speak",zh:"说",label:"Speak"}];
+  return(<div style={{minHeight:"100vh",background:C.paper,display:"flex",flexDirection:"column"}}>
+    <header style={{padding:"18px 20px 10px",display:"flex",alignItems:"center",gap:12,borderBottom:`1.5px solid ${C.line}`}}>
+      <Seal char="学" size={38} rotate={-4}/>
+      <div><div style={{fontFamily:HAN,fontWeight:900,fontSize:19,color:C.ink,lineHeight:1.1}}>路上中文</div><div style={{fontFamily:UI,fontSize:11.5,letterSpacing:1.5,color:C.inkSoft}}>MANDARIN FOR THE ROAD</div></div>
+    </header>
+    <main style={{flex:1,padding:"18px 16px 90px",maxWidth:560,width:"100%",margin:"0 auto",display:"flex",flexDirection:"column"}}>
+      {tab==="today"&&<TodayView state={state} setState={setState}/>}
+      {tab==="decks"&&<DecksView state={state} setState={setState}/>}
+      {tab==="quiz"&&<QuizView state={state} setState={setState}/>}
+      {tab==="speak"&&<SpeakView/>}
+    </main>
+    <nav style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1.5px solid ${C.line}`,display:"flex",justifyContent:"space-around",padding:"8px 0 14px"}}>
+      {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,width:70}}><div style={{fontFamily:HAN,fontWeight:900,fontSize:21,color:tab===t.id?"#FFF8EE":C.inkSoft,background:tab===t.id?C.vermilion:"transparent",width:34,height:34,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",transform:tab===t.id?"rotate(-3deg)":"none"}}>{t.zh}</div><div style={{fontFamily:UI,fontSize:11,fontWeight:700,color:tab===t.id?C.ink:C.inkSoft}}>{t.label}</div></button>)}
+    </nav>
+  </div>);
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
