@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>路上中文 · Mandarin for the Road</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700;900&family=Karla:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.font.im/css2?family=Noto+Serif+SC:wght@500;700;900&family=Karla:wght@400;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
 body{background:#F7F2E7;font-family:'Karla',sans-serif}
@@ -21,9 +21,9 @@ button{cursor:pointer}
 </head>
 <body>
 <div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#6B6357;font-size:18px">Loading 路上中文...</div></div>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
 <script type="text/babel" data-presets="react">
 const {useState,useEffect,useRef,useCallback}=React;
 const C={paper:"#F7F2E7",card:"#FFFCF4",ink:"#2B2722",inkSoft:"#6B6357",vermilion:"#C8372D",vermilionDark:"#A02A22",jade:"#3E7C59",gold:"#B98A2F",line:"#E5DCC8",sky:"#3A6B8A"};
@@ -214,6 +214,123 @@ const TONE_ITEMS=[
   {c:"吃",p:"chī",t:1},{c:"茶",p:"chá",t:2},{c:"你",p:"nǐ",t:3},{c:"是",p:"shì",t:4},
   {c:"天",p:"tiān",t:1},{c:"钱",p:"qián",t:2},{c:"买",p:"mǎi",t:3},{c:"卖",p:"mài",t:4},
   {c:"高",p:"gāo",t:1},{c:"来",p:"lái",t:2},{c:"可",p:"kě",t:3},{c:"去",p:"qù",t:4},
+];
+
+// ── Phrasebook data (offline, no API) ────────────────────────────────
+const BOOK_SECTIONS=[
+  {id:"all",name:"All",icon:"📖"},{id:"emg",name:"Emergency",icon:"🚨"},
+  {id:"food",name:"Restaurant",icon:"🍜"},{id:"move",name:"Getting Around",icon:"🚕"},
+  {id:"shop",name:"Shopping",icon:"🛍️"},{id:"hotel",name:"Hotel",icon:"🏨"},
+  {id:"med",name:"Medical",icon:"💊"},{id:"social",name:"Social",icon:"💬"},
+  {id:"tech",name:"Tech & Misc",icon:"📱"},
+];
+const BOOK=[
+  // Emergency
+  {c:"救命！",p:"jiùmìng!",e:"Help!",s:"emg"},{c:"警察",p:"jǐngchá",e:"Police",s:"emg"},
+  {c:"我需要医生",p:"wǒ xūyào yīshēng",e:"I need a doctor",s:"emg"},
+  {c:"请叫救护车",p:"qǐng jiào jiùhùchē",e:"Please call an ambulance",s:"emg"},
+  {c:"我迷路了",p:"wǒ mílù le",e:"I'm lost",s:"emg"},
+  {c:"我的护照丢了",p:"wǒ de hùzhào diū le",e:"I've lost my passport",s:"emg"},
+  {c:"我的手机被偷了",p:"wǒ de shǒujī bèi tōu le",e:"My phone was stolen",s:"emg"},
+  {c:"我需要去医院",p:"wǒ xūyào qù yīyuàn",e:"I need to go to hospital",s:"emg"},
+  {c:"我对...过敏",p:"wǒ duì...guòmǐn",e:"I'm allergic to...",s:"emg"},
+  {c:"这里很痛",p:"zhèlǐ hěn tòng",e:"It hurts here",s:"emg"},
+  {c:"我不舒服",p:"wǒ bù shūfu",e:"I feel unwell",s:"emg"},
+  {c:"请帮我",p:"qǐng bāng wǒ",e:"Please help me",s:"emg"},
+  // Restaurant & Food
+  {c:"你好，两位",p:"nǐ hǎo, liǎng wèi",e:"Hello, table for two",s:"food"},
+  {c:"有英文菜单吗",p:"yǒu yīngwén càidān ma",e:"Do you have an English menu?",s:"food"},
+  {c:"我要点餐",p:"wǒ yào diǎncān",e:"I'd like to order",s:"food"},
+  {c:"这个是什么",p:"zhège shì shénme",e:"What is this?",s:"food"},
+  {c:"推荐什么",p:"tuījiàn shénme",e:"What do you recommend?",s:"food"},
+  {c:"不要太辣",p:"bú yào tài là",e:"Not too spicy",s:"food"},
+  {c:"不辣",p:"bú là",e:"No spice please",s:"food"},
+  {c:"我吃素",p:"wǒ chī sù",e:"I'm vegetarian",s:"food"},
+  {c:"我不吃肉",p:"wǒ bù chī ròu",e:"I don't eat meat",s:"food"},
+  {c:"不要味精",p:"bú yào wèijīng",e:"No MSG please",s:"food"},
+  {c:"有花生吗",p:"yǒu huāshēng ma",e:"Does this contain peanuts?",s:"food"},
+  {c:"来一瓶水",p:"lái yì píng shuǐ",e:"A bottle of water please",s:"food"},
+  {c:"再来一份",p:"zài lái yī fèn",e:"One more of this please",s:"food"},
+  {c:"买单",p:"mǎidān",e:"Bill please",s:"food"},
+  {c:"可以打包吗",p:"kěyǐ dǎbāo ma",e:"Can I get this to go?",s:"food"},
+  {c:"好吃！谢谢",p:"hǎochī! xièxie",e:"Delicious! Thank you",s:"food"},
+  // Getting around
+  {c:"请送我去这里",p:"qǐng sòng wǒ qù zhèlǐ",e:"Please take me here (show phone)",s:"move"},
+  {c:"请在这里停",p:"qǐng zài zhèlǐ tíng",e:"Please stop here",s:"move"},
+  {c:"多少钱",p:"duōshao qián",e:"How much?",s:"move"},
+  {c:"太贵了",p:"tài guì le",e:"Too expensive",s:"move"},
+  {c:"能便宜吗",p:"néng piányi ma",e:"Can you lower the price?",s:"move"},
+  {c:"地铁站在哪里",p:"dìtiě zhàn zài nǎlǐ",e:"Where is the metro?",s:"move"},
+  {c:"怎么去...",p:"zěnme qù...",e:"How do I get to...?",s:"move"},
+  {c:"左转",p:"zuǒ zhuǎn",e:"Turn left",s:"move"},
+  {c:"右转",p:"yòu zhuǎn",e:"Turn right",s:"move"},
+  {c:"直走",p:"zhí zǒu",e:"Go straight",s:"move"},
+  {c:"这里",p:"zhèlǐ",e:"Here",s:"move"},
+  {c:"那里",p:"nàlǐ",e:"There",s:"move"},
+  {c:"多远",p:"duō yuǎn",e:"How far?",s:"move"},
+  {c:"几分钟",p:"jǐ fēnzhōng",e:"How many minutes?",s:"move"},
+  {c:"走路还是坐车",p:"zǒulù háishi zuòchē",e:"Walk or take transport?",s:"move"},
+  {c:"出口在哪里",p:"chūkǒu zài nǎlǐ",e:"Where is the exit?",s:"move"},
+  // Shopping
+  {c:"这个多少钱",p:"zhège duōshao qián",e:"How much is this?",s:"shop"},
+  {c:"有没有别的颜色",p:"yǒu méiyǒu bié de yánsè",e:"Other colours available?",s:"shop"},
+  {c:"有没有大一点的",p:"yǒu méiyǒu dà yìdiǎn de",e:"A bigger size?",s:"shop"},
+  {c:"有没有小一点的",p:"yǒu méiyǒu xiǎo yìdiǎn de",e:"A smaller size?",s:"shop"},
+  {c:"我要这个颜色",p:"wǒ yào zhège yánsè",e:"I want this colour",s:"shop"},
+  {c:"可以试一试吗",p:"kěyǐ shì yī shì ma",e:"Can I try it?",s:"shop"},
+  {c:"打折吗",p:"dǎzhé ma",e:"Is there a discount?",s:"shop"},
+  {c:"再便宜一点",p:"zài piányi yìdiǎn",e:"A bit cheaper please",s:"shop"},
+  {c:"我不要了，谢谢",p:"wǒ bú yào le, xièxie",e:"No thanks, I don't want it",s:"shop"},
+  {c:"可以用支付宝吗",p:"kěyǐ yòng Zhīfùbǎo ma",e:"Can I use Alipay?",s:"shop"},
+  {c:"可以刷卡吗",p:"kěyǐ shuākǎ ma",e:"Can I pay by card?",s:"shop"},
+  {c:"我需要发票",p:"wǒ xūyào fāpiào",e:"I need a receipt",s:"shop"},
+  // Hotel
+  {c:"我有预订",p:"wǒ yǒu yùdìng",e:"I have a reservation",s:"hotel"},
+  {c:"我的姓名是...",p:"wǒ de xìngmíng shì...",e:"My name is...",s:"hotel"},
+  {c:"能早点入住吗",p:"néng zǎodiǎn rùzhù ma",e:"Can I check in early?",s:"hotel"},
+  {c:"能晚点退房吗",p:"néng wǎndiǎn tuìfáng ma",e:"Can I check out late?",s:"hotel"},
+  {c:"WiFi密码是什么",p:"WiFi mìmǎ shì shénme",e:"What's the WiFi password?",s:"hotel"},
+  {c:"空调坏了",p:"kōngtiáo huài le",e:"The air conditioning is broken",s:"hotel"},
+  {c:"能换一个房间吗",p:"néng huàn yīgè fángjiān ma",e:"Can I change rooms?",s:"hotel"},
+  {c:"行李可以寄存吗",p:"xíngli kěyǐ jìcún ma",e:"Can I store my luggage?",s:"hotel"},
+  {c:"附近有便利店吗",p:"fùjìn yǒu biànlìdiàn ma",e:"Is there a convenience store nearby?",s:"hotel"},
+  {c:"叫醒服务，早上七点",p:"jiàoxǐng fúwù, zǎoshang qī diǎn",e:"Wake-up call at 7am please",s:"hotel"},
+  // Medical
+  {c:"我头疼",p:"wǒ tóuténg",e:"I have a headache",s:"med"},
+  {c:"我肚子疼",p:"wǒ dùzi téng",e:"I have a stomach ache",s:"med"},
+  {c:"我发烧了",p:"wǒ fāshāo le",e:"I have a fever",s:"med"},
+  {c:"我需要止疼药",p:"wǒ xūyào zhǐ téng yào",e:"I need pain killers",s:"med"},
+  {c:"最近的药店在哪里",p:"zuìjìn de yàodiàn zài nǎlǐ",e:"Where is the nearest pharmacy?",s:"med"},
+  {c:"我对青霉素过敏",p:"wǒ duì qīngméisù guòmǐn",e:"I'm allergic to penicillin",s:"med"},
+  {c:"我需要看医生",p:"wǒ xūyào kàn yīshēng",e:"I need to see a doctor",s:"med"},
+  {c:"请写下来",p:"qǐng xiě xià lái",e:"Please write it down",s:"med"},
+  // Social
+  {c:"你好",p:"nǐ hǎo",e:"Hello",s:"social"},{c:"谢谢",p:"xièxie",e:"Thank you",s:"social"},
+  {c:"不客气",p:"bú kèqi",e:"You're welcome",s:"social"},
+  {c:"对不起",p:"duìbuqǐ",e:"Sorry",s:"social"},
+  {c:"没关系",p:"méi guānxi",e:"No worries",s:"social"},
+  {c:"我是爱尔兰人",p:"wǒ shì Ài'ěrlán rén",e:"I'm Irish",s:"social"},
+  {c:"我在学中文",p:"wǒ zài xué Zhōngwén",e:"I'm learning Chinese",s:"social"},
+  {c:"你说得很慢可以吗",p:"nǐ shuō de hěn màn kěyǐ ma",e:"Can you speak slowly please?",s:"social"},
+  {c:"我听不懂",p:"wǒ tīng bù dǒng",e:"I don't understand",s:"social"},
+  {c:"请再说一遍",p:"qǐng zài shuō yībiàn",e:"Please say that again",s:"social"},
+  {c:"能写下来吗",p:"néng xiě xià lái ma",e:"Can you write it down?",s:"social"},
+  {c:"可以拍照吗",p:"kěyǐ pāizhào ma",e:"Can I take a photo?",s:"social"},
+  {c:"和你合照可以吗",p:"hé nǐ hézhào kěyǐ ma",e:"Can I take a photo with you?",s:"social"},
+  {c:"再见",p:"zàijiàn",e:"Goodbye",s:"social"},
+  {c:"祝你愉快",p:"zhù nǐ yúkuài",e:"Have a great day",s:"social"},
+  // Tech & Misc
+  {c:"有充电器吗",p:"yǒu chōngdiànqì ma",e:"Do you have a charger?",s:"tech"},
+  {c:"我需要充电",p:"wǒ xūyào chōngdiàn",e:"I need to charge my phone",s:"tech"},
+  {c:"有插座吗",p:"yǒu chāzuò ma",e:"Is there a power socket?",s:"tech"},
+  {c:"WiFi有吗",p:"WiFi yǒu ma",e:"Is there WiFi?",s:"tech"},
+  {c:"信号不好",p:"xìnhào bù hǎo",e:"The signal is bad",s:"tech"},
+  {c:"要收费吗",p:"yào shōufèi ma",e:"Is there a fee?",s:"tech"},
+  {c:"几点关门",p:"jǐ diǎn guānmén",e:"What time do you close?",s:"tech"},
+  {c:"几点开门",p:"jǐ diǎn kāimén",e:"What time do you open?",s:"tech"},
+  {c:"有洗手间吗",p:"yǒu xǐshǒujiān ma",e:"Is there a bathroom?",s:"tech"},
+  {c:"禁止拍照",p:"jìnzhǐ pāizhào",e:"No photography (sign)",s:"tech"},
+  {c:"请勿打扰",p:"qǐng wù dǎrǎo",e:"Do not disturb (sign)",s:"tech"},
 ];
 const SCENARIOS=[
   {id:"hotpot",name:"Hotpot restaurant",zh:"火锅店",role:"a friendly waiter in a Chengdu hotpot restaurant. Help the customer order, choose spice levels, and understand the menu"},
@@ -734,12 +851,66 @@ function TranslateView(){
   </div>);
 }
 
+
+// ── Phrasebook view (fully offline) ──────────────────────────────────
+function PhrasebookView(){
+  const[section,setSection]=useState("all");
+  const[search,setSearch]=useState("");
+  const[bigCard,setBigCard]=useState(null);
+  const filtered=BOOK.filter(p=>{
+    const matchSection=section==="all"||p.s===section;
+    const q=search.toLowerCase();
+    const matchSearch=!q||p.c.includes(q)||p.p.toLowerCase().includes(q)||p.e.toLowerCase().includes(q);
+    return matchSection&&matchSearch;
+  });
+  // Full-screen "show to local" overlay
+  if(bigCard)return(
+    <div onClick={()=>setBigCard(null)} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:C.ink,zIndex:9999,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:32,cursor:"pointer"}}>
+      <div style={{fontFamily:HAN,fontWeight:900,fontSize:72,color:"#FFF8EE",textAlign:"center",lineHeight:1.2,marginBottom:20}}>{bigCard.c}</div>
+      <div style={{fontFamily:UI,fontSize:22,color:C.vermilion,fontWeight:700,marginBottom:8}}>{bigCard.p}</div>
+      <div style={{fontFamily:UI,fontSize:18,color:"#FFF8EEAA",marginBottom:32}}>{bigCard.e}</div>
+      <div style={{display:"flex",gap:16}}>
+        <button onClick={e=>{e.stopPropagation();speak(bigCard.c,bigCard.p);}} style={{background:C.vermilion,border:"none",borderRadius:50,width:64,height:64,fontSize:28,cursor:"pointer"}}>🔊</button>
+        <button onClick={()=>setBigCard(null)} style={{background:"#FFF8EE22",border:"1.5px solid #FFF8EE44",borderRadius:50,width:64,height:64,fontSize:22,cursor:"pointer",color:"#FFF8EE",fontFamily:UI,fontWeight:700}}>✕</button>
+      </div>
+      <div style={{position:"absolute",bottom:24,fontFamily:UI,fontSize:13,color:"#FFF8EE66"}}>Tap anywhere to close</div>
+    </div>
+  );
+  return(<div style={{display:"flex",flexDirection:"column",gap:12}}>
+    {/* Header */}
+    <div style={{display:"flex",alignItems:"center",gap:10}}>
+      <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.ink,flex:1}}>手册 Phrasebook</div>
+      <div style={{fontFamily:UI,fontSize:12,color:C.inkSoft,textAlign:"right"}}>Tap card for<br/>show-to-local</div>
+    </div>
+    {/* Search */}
+    <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search phrases…" style={{fontFamily:UI,fontSize:15,padding:"10px 14px",borderRadius:12,border:`1.5px solid ${C.line}`,background:C.card,color:C.ink,outline:"none",width:"100%"}}/>
+    {/* Section tabs - horizontal scroll */}
+    <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
+      {BOOK_SECTIONS.map(s=><button key={s.id} onClick={()=>setSection(s.id)} style={{background:section===s.id?C.vermilion:C.card,color:section===s.id?"#FFF8EE":C.ink,border:`1.5px solid ${section===s.id?C.vermilion:C.line}`,borderRadius:20,padding:"6px 12px",fontFamily:UI,fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>{s.icon} {s.name}</button>)}
+    </div>
+    {/* Phrase count */}
+    <div style={{fontFamily:UI,fontSize:12,color:C.inkSoft}}>{filtered.length} phrases {search&&`matching "${search}"`}</div>
+    {/* Phrase cards */}
+    {filtered.map((p,i)=>(
+      <div key={i} onClick={()=>setBigCard(p)} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:14,padding:"14px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
+        <div style={{flex:1}}>
+          <div style={{fontFamily:HAN,fontWeight:700,fontSize:22,color:C.ink,lineHeight:1.2}}>{p.c}</div>
+          <div style={{fontFamily:UI,fontSize:14,color:C.vermilion,fontWeight:700,marginTop:2}}>{p.p}</div>
+          <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,marginTop:1}}>{p.e}</div>
+        </div>
+        <button onClick={e=>{e.stopPropagation();speak(p.c,p.p);}} style={{background:C.paper,border:`1.5px solid ${C.line}`,borderRadius:"50%",width:40,height:40,fontSize:18,cursor:"pointer",flexShrink:0}}>🔊</button>
+      </div>
+    ))}
+    {filtered.length===0&&<div style={{textAlign:"center",fontFamily:UI,color:C.inkSoft,padding:32}}>No phrases found</div>}
+  </div>);
+}
+
 // ── App shell ─────────────────────────────────────────────────────────
 function App(){
   const[tab,setTab]=useState("today"),[state,setState]=useState(null);
   useEffect(()=>{setState(loadState());},[]);
   if(!state)return <div style={{minHeight:"100vh",background:C.paper,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:UI,color:C.inkSoft}}>Loading…</div>;
-  const tabs=[{id:"today",zh:"今",label:"Today"},{id:"decks",zh:"词",label:"Decks"},{id:"quiz",zh:"测",label:"Quiz"},{id:"speak",zh:"说",label:"Speak"},{id:"trans",zh:"译",label:"Translate"}];
+  const tabs=[{id:"today",zh:"今",label:"Today"},{id:"decks",zh:"词",label:"Decks"},{id:"quiz",zh:"测",label:"Quiz"},{id:"speak",zh:"说",label:"Speak"},{id:"trans",zh:"译",label:"Trans"},{id:"book",zh:"册",label:"Phrases"}];
   return(<div style={{minHeight:"100vh",background:C.paper,display:"flex",flexDirection:"column"}}>
     <header style={{padding:"14px 18px 10px",display:"flex",alignItems:"center",gap:10,borderBottom:`1.5px solid ${C.line}`,background:C.card}}>
       <Seal char="学" size={36} rotate={-4}/>
@@ -755,6 +926,7 @@ function App(){
       {tab==="quiz"&&<QuizView state={state} setState={setState}/>}
       {tab==="speak"&&<SpeakView/>}
       {tab==="trans"&&<TranslateView/>}
+      {tab==="book"&&<PhrasebookView/>}
     </main>
     <nav style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1.5px solid ${C.line}`,display:"flex",justifyContent:"space-around",padding:"6px 0 12px",zIndex:100}}>
       {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:1,minWidth:52}}>
