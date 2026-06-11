@@ -910,7 +910,7 @@ function useSpeechInput(onResult){
       rec.onerror=e=>{
         const map={
           'no-speech':'No speech detected — speak closer to the mic and try again',
-          'not-allowed':'Microphone blocked — go to Chrome Settings → Site Settings → Microphone and allow this site',
+          'not-allowed':'Chrome has blocked the mic for this site — Android settings alone are not enough. Fix: in Chrome tap the 🔒 lock icon in the address bar → Site settings → Microphone → Allow. Then reload the page.',
           'audio-capture':'No microphone found on this device',
           'network':'Speech needs internet — check your connection',
           'service-not-allowed':'Speech service unavailable on this device (common on Chinese ROM phones without Google services)',
@@ -995,10 +995,13 @@ function SpeakView(){
       <div ref={bottomRef}/>
     </div>
     <div style={{display:"flex",gap:6,alignItems:"center"}}>
-      {mic.supported&&<>
-        <button onClick={()=>mic.setLang(mic.lang==='en-US'?'zh-CN':'en-US')} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:8,padding:"0 8px",height:46,fontFamily:UI,fontWeight:700,fontSize:12,color:C.ink,cursor:"pointer",flexShrink:0}}>{mic.lang==='en-US'?'EN':'中'}</button>
-        <button onClick={mic.start} title={mic.listening?"Stop":"Tap to speak"} style={{background:mic.listening?C.vermilion:mic.hasError?"#FBF3E3":C.card,border:`1.5px solid ${mic.listening?C.vermilion:mic.hasError?C.gold:C.line}`,borderRadius:"50%",width:46,height:46,fontSize:20,cursor:"pointer",flexShrink:0,animation:mic.listening?"pulse 1s infinite":undefined}}>🎤</button>
-      </>}
+      {mic.supported&&<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,flexShrink:0}}>
+        <div style={{display:"flex",gap:4}}>
+          <button onClick={()=>mic.setLang(mic.lang==='en-US'?'zh-CN':'en-US')} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:8,padding:"0 8px",height:36,fontFamily:UI,fontWeight:700,fontSize:12,color:C.ink,cursor:"pointer"}}>{mic.lang==='en-US'?'EN':'中'}</button>
+          <button onClick={mic.start} style={{background:mic.listening?C.vermilion:mic.hasError?"#FBF3E3":C.card,border:`1.5px solid ${mic.listening?C.vermilion:mic.hasError?C.gold:C.line}`,borderRadius:"50%",width:36,height:36,fontSize:17,cursor:"pointer",animation:mic.listening?"pulse 1s infinite":undefined}}>🎤</button>
+        </div>
+        <div style={{fontFamily:UI,fontSize:9,color:C.inkSoft,textAlign:"center"}}>{mic.listening?"tap to stop":"tap once"}</div>
+      </div>}
       <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder={mic.supported?"Speak 🎤 or type…":"Reply in Chinese, pinyin or English…"} style={{flex:1,fontFamily:UI,fontSize:14,padding:"11px 12px",borderRadius:12,border:`1.5px solid ${C.line}`,background:C.card,color:C.ink,outline:"none"}}/>
       <button onClick={send} disabled={busy} style={{background:C.vermilion,color:"#FFF8EE",border:"none",borderRadius:12,padding:"0 14px",fontFamily:UI,fontWeight:700,fontSize:15,cursor:"pointer",opacity:busy?0.5:1,height:46}}>Send</button>
     </div>
