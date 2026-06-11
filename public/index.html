@@ -877,21 +877,69 @@ function QuizView({state,setState}){
 
 // ── Speech recognition hook ─────────────────────────────────────────
 function useSpeechInput(onResult){
-  const[listening,setListening]=useState(false),[lang,setLang]=useState('en-US');
+  const[status,setStatus]=useState('idle'); // idle | listening | error | unsupported
+  const[errMsg,setErrMsg]=useState('');
+  const[lang,setLang]=useState('en-US');
   const recRef=useRef(null);
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  const supported=!!SR;
-  const toggle=()=>{
-    if(listening){recRef.current?.stop();setListening(false);return;}
-    if(!supported)return;
-    const rec=new SR();
-    rec.lang=lang;rec.continuous=false;rec.interimResults=false;
-    rec.onresult=e=>{const t=e.results[0][0].transcript;onResult(t);setListening(false);};
-    rec.onerror=()=>setListening(false);
-    rec.onend=()=>setListening(false);
-    rec.start();recRef.current=rec;setListening(true);
+
+  // Check support
+  const SR=typeof window!=='undefined'&&(window.SpeechRecognition||window.webkitSpeechRecognition);
+
+  const start=()=>{
+    if(!SR){setStatus('unsupported');setErrMsg('Speech recognition not available in this browser');return;}
+    if(status==='listening'){recRef.current?.abort();setStatus('idle');return;}
+    setStatus('listening');setErrMsg('');
+    try{
+      const rec=new SR();
+      rec.lang=lang;
+      rec.continuous=false;
+      rec.interimResults=true;  // interim=true catches more results on Android
+      rec.maxAlternatives=1;
+      let gotResult=false;
+
+      rec.onresult=e=>{
+        // grab the best final result, or best interim if no final yet
+        let text='';
+        for(let i=e.resultIndex;i<e.results.length;i++){
+          if(e.results[i].isFinal){text=e.results[i][0].transcript;gotResult=true;}
+          else if(!gotResult){text=e.results[i][0].transcript;}
+        }
+        if(gotResult&&text.trim()){onResult(text.trim());setStatus('idle');}
+      };
+
+      rec.onerror=e=>{
+        const map={
+          'no-speech':'No speech detected — speak closer to the mic and try again',
+          'not-allowed':'Microphone blocked — go to Chrome Settings → Site Settings → Microphone and allow this site',
+          'audio-capture':'No microphone found on this device',
+          'network':'Speech needs internet — check your connection',
+          'service-not-allowed':'Speech service unavailable on this device (common on Chinese ROM phones without Google services)',
+          'aborted':'Cancelled',
+        };
+        setErrMsg(map[e.error]||'Speech error: '+e.error);
+        setStatus('error');
+        gotResult=true; // prevent onend from overwriting
+      };
+
+      rec.onend=()=>{
+        if(!gotResult){
+          setErrMsg('No speech detected — tap 🎤 and speak clearly');
+          setStatus('error');
+        }
+      };
+
+      rec.start();
+      recRef.current=rec;
+    }catch(e){
+      setErrMsg('Could not start microphone: '+e.message);
+      setStatus('error');
+    }
   };
-  return{listening,lang,setLang,toggle,supported};
+
+  const clear=()=>{setStatus('idle');setErrMsg('');};
+
+  return{status,errMsg,lang,setLang,start,clear,supported:!!SR,
+    listening:status==='listening',hasError:status==='error'};
 }
 // ── Speak view ────────────────────────────────────────────────────────
 function SpeakView(){
@@ -949,12 +997,13 @@ function SpeakView(){
     <div style={{display:"flex",gap:6,alignItems:"center"}}>
       {mic.supported&&<>
         <button onClick={()=>mic.setLang(mic.lang==='en-US'?'zh-CN':'en-US')} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:8,padding:"0 8px",height:46,fontFamily:UI,fontWeight:700,fontSize:12,color:C.ink,cursor:"pointer",flexShrink:0}}>{mic.lang==='en-US'?'EN':'中'}</button>
-        <button onClick={mic.toggle} title={mic.listening?"Stop listening":"Tap to speak"} style={{background:mic.listening?C.vermilion:C.card,border:`1.5px solid ${mic.listening?C.vermilion:C.line}`,borderRadius:"50%",width:46,height:46,fontSize:20,cursor:"pointer",flexShrink:0,animation:mic.listening?"pulse 1s infinite":undefined}}>🎤</button>
+        <button onClick={mic.start} title={mic.listening?"Stop":"Tap to speak"} style={{background:mic.listening?C.vermilion:mic.hasError?"#FBF3E3":C.card,border:`1.5px solid ${mic.listening?C.vermilion:mic.hasError?C.gold:C.line}`,borderRadius:"50%",width:46,height:46,fontSize:20,cursor:"pointer",flexShrink:0,animation:mic.listening?"pulse 1s infinite":undefined}}>🎤</button>
       </>}
       <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder={mic.supported?"Speak 🎤 or type…":"Reply in Chinese, pinyin or English…"} style={{flex:1,fontFamily:UI,fontSize:14,padding:"11px 12px",borderRadius:12,border:`1.5px solid ${C.line}`,background:C.card,color:C.ink,outline:"none"}}/>
       <button onClick={send} disabled={busy} style={{background:C.vermilion,color:"#FFF8EE",border:"none",borderRadius:12,padding:"0 14px",fontFamily:UI,fontWeight:700,fontSize:15,cursor:"pointer",opacity:busy?0.5:1,height:46}}>Send</button>
     </div>
     {mic.listening&&<div style={{fontFamily:UI,fontSize:13,color:C.vermilion,fontWeight:700,textAlign:'center',animation:'pulse 1s infinite'}}>🎤 Listening in {mic.lang==='en-US'?'English':'Chinese'}… tap 🎤 to stop</div>}
+    {mic.hasError&&<div onClick={mic.clear} style={{fontFamily:UI,fontSize:12,color:C.ink,background:"#FBF3E3",border:`1px solid ${C.gold}`,borderRadius:8,padding:"8px 12px",cursor:"pointer"}}>⚠️ {mic.errMsg} <span style={{color:C.gold}}>(tap to dismiss)</span></div>}
   </div>);
 }
 
@@ -983,12 +1032,13 @@ function TranslateView(){
     <div style={{display:"flex",gap:6,alignItems:"center"}}>
       {mic.supported&&<>
         <button onClick={()=>mic.setLang(mic.lang==='en-US'?'zh-CN':'en-US')} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:8,padding:"0 8px",height:46,fontFamily:UI,fontWeight:700,fontSize:12,color:C.ink,cursor:"pointer",flexShrink:0}}>{mic.lang==='en-US'?'EN':'中'}</button>
-        <button onClick={mic.toggle} style={{background:mic.listening?C.vermilion:C.card,border:`1.5px solid ${mic.listening?C.vermilion:C.line}`,borderRadius:"50%",width:46,height:46,fontSize:20,cursor:"pointer",flexShrink:0}}>🎤</button>
+        <button onClick={mic.start} style={{background:mic.listening?C.vermilion:mic.hasError?"#FBF3E3":C.card,border:`1.5px solid ${mic.listening?C.vermilion:mic.hasError?C.gold:C.line}`,borderRadius:"50%",width:46,height:46,fontSize:20,cursor:"pointer",flexShrink:0,animation:mic.listening?"pulse 1s infinite":undefined}}>🎤</button>
       </>}
       <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&translate()} placeholder={mic.supported?"Speak 🎤 or type…":"Type English or Chinese…"} style={{flex:1,fontFamily:UI,fontSize:14,padding:"11px 12px",borderRadius:12,border:`1.5px solid ${C.line}`,background:C.card,color:C.ink,outline:"none"}}/>
       <button onClick={translate} disabled={busy} style={{background:C.vermilion,color:"#FFF8EE",border:"none",borderRadius:12,padding:"0 14px",fontFamily:UI,fontWeight:700,fontSize:15,cursor:"pointer",opacity:busy?0.5:1,height:46}}>{busy?"…":"Go"}</button>
     </div>
     {mic.listening&&<div style={{fontFamily:UI,fontSize:13,color:C.vermilion,fontWeight:700,textAlign:'center',animation:'pulse 1s infinite'}}>🎤 Listening in {mic.lang==='en-US'?'English':'Chinese'}… tap 🎤 to stop</div>}
+    {mic.hasError&&<div onClick={mic.clear} style={{fontFamily:UI,fontSize:12,color:C.ink,background:"#FBF3E3",border:`1px solid ${C.gold}`,borderRadius:8,padding:"8px 12px",cursor:"pointer"}}>⚠️ {mic.errMsg} <span style={{color:C.gold}}>(tap to dismiss)</span></div>}
     {result&&!result.error&&<div className="slideUp" style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:20,display:"flex",flexDirection:"column",gap:12}}>
       <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
         <div style={{flex:1}}>
