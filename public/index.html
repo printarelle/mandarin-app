@@ -876,70 +876,77 @@ function QuizView({state,setState}){
 }
 
 // ── Speech recognition hook ─────────────────────────────────────────
+// ── Voice recording hook (MediaRecorder + Whisper — works on all phones) ─
 function useSpeechInput(onResult){
-  const[status,setStatus]=useState('idle'); // idle | listening | error | unsupported
+  const[status,setStatus]=useState('idle'); // idle|recording|transcribing|error
   const[errMsg,setErrMsg]=useState('');
   const[lang,setLang]=useState('en-US');
-  const recRef=useRef(null);
+  const streamRef=useRef(null);
+  const recorderRef=useRef(null);
+  const chunksRef=useRef([]);
 
-  // Check support
-  const SR=typeof window!=='undefined'&&(window.SpeechRecognition||window.webkitSpeechRecognition);
+  const start=async()=>{
+    // If already recording, stop and transcribe
+    if(status==='recording'){
+      recorderRef.current?.stop();
+      return;
+    }
+    if(status==='transcribing')return;
+    setErrMsg('');setStatus('recording');chunksRef.current=[];
 
-  const start=()=>{
-    if(!SR){setStatus('unsupported');setErrMsg('Speech recognition not available in this browser');return;}
-    if(status==='listening'){recRef.current?.abort();setStatus('idle');return;}
-    setStatus('listening');setErrMsg('');
     try{
-      const rec=new SR();
-      rec.lang=lang;
-      rec.continuous=false;
-      rec.interimResults=true;  // interim=true catches more results on Android
-      rec.maxAlternatives=1;
-      let gotResult=false;
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      streamRef.current=stream;
+      const rec=new MediaRecorder(stream);
+      recorderRef.current=rec;
 
-      rec.onresult=e=>{
-        // grab the best final result, or best interim if no final yet
-        let text='';
-        for(let i=e.resultIndex;i<e.results.length;i++){
-          if(e.results[i].isFinal){text=e.results[i][0].transcript;gotResult=true;}
-          else if(!gotResult){text=e.results[i][0].transcript;}
-        }
-        if(gotResult&&text.trim()){onResult(text.trim());setStatus('idle');}
-      };
+      rec.ondataavailable=e=>{if(e.data.size>0)chunksRef.current.push(e.data);};
 
-      rec.onerror=e=>{
-        const map={
-          'no-speech':'No speech detected — speak closer to the mic and try again',
-          'not-allowed':'Chrome has blocked the mic for this site — Android settings alone are not enough. Fix: in Chrome tap the 🔒 lock icon in the address bar → Site settings → Microphone → Allow. Then reload the page.',
-          'audio-capture':'No microphone found on this device',
-          'network':'Speech needs internet — check your connection',
-          'service-not-allowed':'Speech service unavailable on this device (common on Chinese ROM phones without Google services)',
-          'aborted':'Cancelled',
-        };
-        setErrMsg(map[e.error]||'Speech error: '+e.error);
-        setStatus('error');
-        gotResult=true; // prevent onend from overwriting
-      };
-
-      rec.onend=()=>{
-        if(!gotResult){
-          setErrMsg('No speech detected — tap 🎤 and speak clearly');
+      rec.onstop=async()=>{
+        stream.getTracks().forEach(t=>t.stop());
+        if(!chunksRef.current.length){setStatus('idle');return;}
+        setStatus('transcribing');
+        try{
+          const blob=new Blob(chunksRef.current,{type:'audio/webm'});
+          const b64=await new Promise(resolve=>{
+            const r=new FileReader();
+            r.onload=()=>resolve(r.result.split(',')[1]);
+            r.readAsDataURL(blob);
+          });
+          const res=await fetch('/api/transcribe',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({audio:b64,mimeType:'audio/webm'}),
+          });
+          const data=await res.json();
+          if(data.error)throw new Error(data.error);
+          if(data.text?.trim()){onResult(data.text.trim());setStatus('idle');}
+          else{setErrMsg('No speech detected — try again');setStatus('error');}
+        }catch(e){
+          setErrMsg('Transcription failed: '+e.message);
           setStatus('error');
         }
       };
 
-      rec.start();
-      recRef.current=rec;
+      rec.start(250); // collect chunks every 250ms
     }catch(e){
-      setErrMsg('Could not start microphone: '+e.message);
+      if(e.name==='NotAllowedError'){
+        setErrMsg('Mic blocked — tap the 🔒 lock icon in Chrome\'s address bar → Permissions → Microphone → Allow, then reload');
+      }else{
+        setErrMsg('Mic error: '+e.message);
+      }
       setStatus('error');
     }
   };
 
   const clear=()=>{setStatus('idle');setErrMsg('');};
-
-  return{status,errMsg,lang,setLang,start,clear,supported:!!SR,
-    listening:status==='listening',hasError:status==='error'};
+  return{
+    status,errMsg,lang,setLang,start,clear,
+    supported:!!(navigator.mediaDevices?.getUserMedia),
+    listening:status==='recording',
+    transcribing:status==='transcribing',
+    hasError:status==='error',
+  };
 }
 // ── Speak view ────────────────────────────────────────────────────────
 function SpeakView(){
@@ -1000,12 +1007,13 @@ function SpeakView(){
           <button onClick={()=>mic.setLang(mic.lang==='en-US'?'zh-CN':'en-US')} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:8,padding:"0 8px",height:36,fontFamily:UI,fontWeight:700,fontSize:12,color:C.ink,cursor:"pointer"}}>{mic.lang==='en-US'?'EN':'中'}</button>
           <button onClick={mic.start} style={{background:mic.listening?C.vermilion:mic.hasError?"#FBF3E3":C.card,border:`1.5px solid ${mic.listening?C.vermilion:mic.hasError?C.gold:C.line}`,borderRadius:"50%",width:36,height:36,fontSize:17,cursor:"pointer",animation:mic.listening?"pulse 1s infinite":undefined}}>🎤</button>
         </div>
-        <div style={{fontFamily:UI,fontSize:9,color:C.inkSoft,textAlign:"center"}}>{mic.listening?"tap to stop":"tap once"}</div>
+        <div style={{fontFamily:UI,fontSize:9,color:mic.transcribing?C.jade:C.inkSoft,textAlign:"center"}}>{mic.transcribing?"…":"tap once"}</div>
       </div>}
       <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder={mic.supported?"Speak 🎤 or type…":"Reply in Chinese, pinyin or English…"} style={{flex:1,fontFamily:UI,fontSize:14,padding:"11px 12px",borderRadius:12,border:`1.5px solid ${C.line}`,background:C.card,color:C.ink,outline:"none"}}/>
       <button onClick={send} disabled={busy} style={{background:C.vermilion,color:"#FFF8EE",border:"none",borderRadius:12,padding:"0 14px",fontFamily:UI,fontWeight:700,fontSize:15,cursor:"pointer",opacity:busy?0.5:1,height:46}}>Send</button>
     </div>
-    {mic.listening&&<div style={{fontFamily:UI,fontSize:13,color:C.vermilion,fontWeight:700,textAlign:'center',animation:'pulse 1s infinite'}}>🎤 Listening in {mic.lang==='en-US'?'English':'Chinese'}… tap 🎤 to stop</div>}
+    {mic.listening&&<div style={{fontFamily:UI,fontSize:13,color:C.vermilion,fontWeight:700,textAlign:'center',animation:'pulse 1s infinite'}}>🎤 Recording… tap 🎤 again to stop and transcribe</div>}
+    {mic.transcribing&&<div style={{fontFamily:UI,fontSize:13,color:C.jade,fontWeight:700,textAlign:'center',animation:'pulse 1s infinite'}}>⏳ Transcribing with Whisper…</div>}
     {mic.hasError&&<div onClick={mic.clear} style={{fontFamily:UI,fontSize:12,color:C.ink,background:"#FBF3E3",border:`1px solid ${C.gold}`,borderRadius:8,padding:"8px 12px",cursor:"pointer"}}>⚠️ {mic.errMsg} <span style={{color:C.gold}}>(tap to dismiss)</span></div>}
   </div>);
 }
@@ -1040,7 +1048,8 @@ function TranslateView(){
       <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&translate()} placeholder={mic.supported?"Speak 🎤 or type…":"Type English or Chinese…"} style={{flex:1,fontFamily:UI,fontSize:14,padding:"11px 12px",borderRadius:12,border:`1.5px solid ${C.line}`,background:C.card,color:C.ink,outline:"none"}}/>
       <button onClick={translate} disabled={busy} style={{background:C.vermilion,color:"#FFF8EE",border:"none",borderRadius:12,padding:"0 14px",fontFamily:UI,fontWeight:700,fontSize:15,cursor:"pointer",opacity:busy?0.5:1,height:46}}>{busy?"…":"Go"}</button>
     </div>
-    {mic.listening&&<div style={{fontFamily:UI,fontSize:13,color:C.vermilion,fontWeight:700,textAlign:'center',animation:'pulse 1s infinite'}}>🎤 Listening in {mic.lang==='en-US'?'English':'Chinese'}… tap 🎤 to stop</div>}
+    {mic.listening&&<div style={{fontFamily:UI,fontSize:13,color:C.vermilion,fontWeight:700,textAlign:'center',animation:'pulse 1s infinite'}}>🎤 Recording… tap 🎤 again to stop and transcribe</div>}
+    {mic.transcribing&&<div style={{fontFamily:UI,fontSize:13,color:C.jade,fontWeight:700,textAlign:'center',animation:'pulse 1s infinite'}}>⏳ Transcribing with Whisper…</div>}
     {mic.hasError&&<div onClick={mic.clear} style={{fontFamily:UI,fontSize:12,color:C.ink,background:"#FBF3E3",border:`1px solid ${C.gold}`,borderRadius:8,padding:"8px 12px",cursor:"pointer"}}>⚠️ {mic.errMsg} <span style={{color:C.gold}}>(tap to dismiss)</span></div>}
     {result&&!result.error&&<div className="slideUp" style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:20,display:"flex",flexDirection:"column",gap:12}}>
       <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
