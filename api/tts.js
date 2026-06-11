@@ -4,36 +4,38 @@ export default async function handler(req, res) {
 
   const googleUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${lang}&client=gtx&ttsspeed=0.8`;
   const googleHeaders = {
-    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
     'Referer': 'https://translate.google.com/',
-    'Accept': 'audio/mpeg,audio/*;q=0.9,*/*;q=0.8',
+    'Accept': 'audio/mpeg,audio/*;q=0.9',
   };
 
-  // For non-Chinese languages, only Google works
+  // For Chinese: race ALL sources simultaneously — fastest valid response wins.
+  // In Ireland, Google typically wins. In China, Youdao/Baidu win.
+  // For other languages (English): Google only.
   const sources = lang === 'zh-CN' ? [
+    { name: 'youdao', url: `https://dict.youdao.com/dictvoice?type=2&audio=${encodeURIComponent(text)}`, headers: { 'User-Agent': 'Mozilla/5.0' } },
+    { name: 'baidu', url: `https://fanyi.baidu.com/gettts?lan=zh&text=${encodeURIComponent(text)}&spd=3&source=web`, headers: { 'User-Agent': 'Mozilla/5.0' } },
     { name: 'google', url: googleUrl, headers: googleHeaders },
-    { name: 'youdao', url: `https://dict.youdao.com/dictvoice?type=2&audio=${encodeURIComponent(text)}`, headers: { 'User-Agent': 'Mozilla/5.0 (compatible)' } },
-    { name: 'baidu', url: `https://fanyi.baidu.com/gettts?lan=zh&text=${encodeURIComponent(text)}&spd=3&source=web`, headers: { 'User-Agent': 'Mozilla/5.0 (compatible)' } },
   ] : [
     { name: 'google', url: googleUrl, headers: googleHeaders },
   ];
 
-  for (const source of sources) {
-    try {
-      const response = await fetch(source.url, { headers: source.headers });
-      if (!response.ok) continue;
-      const buffer = Buffer.from(await response.arrayBuffer());
-      if (buffer.length < 100) continue;
-      res.setHeader('Content-Type', 'audio/mpeg');
-      res.setHeader('Cache-Control', 'private, max-age=3600');
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('X-TTS-Source', source.name);
-      res.send(buffer);
-      return;
-    } catch (e) {
-      continue;
-    }
+  try {
+    const result = await Promise.any(
+      sources.map(async source => {
+        const response = await fetch(source.url, { headers: source.headers });
+        if (!response.ok) throw new Error(`${source.name} ${response.status}`);
+        const buffer = Buffer.from(await response.arrayBuffer());
+        if (buffer.length < 100) throw new Error(`${source.name} empty`);
+        return { buffer, name: source.name };
+      })
+    );
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('X-TTS-Source', result.name);
+    res.send(result.buffer);
+  } catch (e) {
+    res.status(500).send('All TTS sources failed');
   }
-
-  res.status(500).send('All TTS sources failed');
 }
