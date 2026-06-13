@@ -1965,7 +1965,7 @@ function App(){
       {tab==="book"&&<PhrasebookView/>}
       {tab==="hsk"&&<HSKView state={state} setState={setState}/>}
     </main>
-    <nav style={{position:"sticky",bottom:0,background:C.card,borderTop:`1.5px solid ${C.line}`,zIndex:100}}>
+    <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:580,background:C.card,borderTop:`1.5px solid ${C.line}`,zIndex:100}}>
       <div style={{display:"flex",overflowX:"auto",padding:"6px 4px 12px",WebkitOverflowScrolling:"touch"}}>
       {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:1,minWidth:52,flexShrink:0}}>
         <div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:tab===t.id?"#FFF8EE":C.inkSoft,background:tab===t.id?C.vermilion:"transparent",width:32,height:32,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",transform:tab===t.id?"rotate(-4deg)":"none",transition:'all 0.2s'}}>{t.zh}</div>
