@@ -1944,9 +1944,8 @@ function App(){
   useEffect(()=>{setState(loadState());},[]);
   if(!state)return <div style={{minHeight:"100vh",background:C.paper,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:UI,color:C.inkSoft}}>Loading…</div>;
   const tabs=[{id:"today",zh:"今",label:"Today"},{id:"decks",zh:"词",label:"Decks"},{id:"quiz",zh:"测",label:"Quiz"},{id:"speak",zh:"说",label:"Speak"},{id:"trans",zh:"译",label:"Trans"},{id:"book",zh:"册",label:"Phrases"},{id:"hsk",zh:"级",label:"HSK"}];
-  return(<div style={{minHeight:"100vh",background:C.paper,display:"flex",justifyContent:"center"}}>
-    <div style={{width:"100%",maxWidth:580,minHeight:"100vh",background:C.card,display:"flex",flexDirection:"column",boxShadow:"0 0 40px rgba(0,0,0,0.06)",position:"relative"}}>
-    <header style={{borderBottom:`1.5px solid ${C.line}`,background:C.card}}>
+  return(<div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:580,height:"100%",display:"flex",flexDirection:"column",background:C.card,boxShadow:"0 0 40px rgba(0,0,0,0.08)"}}>
+    <header style={{flexShrink:0,borderBottom:`1.5px solid ${C.line}`,background:C.card}}>
       <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 18px 10px"}}>
       <Seal char="学" size={36} rotate={-4}/>
       <div style={{flex:1}}>
@@ -1956,7 +1955,7 @@ function App(){
       <LanternSVG size={32}/>
       </div>
     </header>
-    <main style={{flex:1,padding:"16px 14px 88px",display:"flex",flexDirection:"column"}}>
+    <main style={{flex:1,overflowY:"auto",padding:"16px 14px 16px",WebkitOverflowScrolling:"touch"}}>
       {tab==="today"&&<TodayView state={state} setState={setState}/>}
       {tab==="decks"&&<DecksView state={state} setState={setState}/>}
       {tab==="quiz"&&<QuizView state={state} setState={setState}/>}
@@ -1965,7 +1964,7 @@ function App(){
       {tab==="book"&&<PhrasebookView/>}
       {tab==="hsk"&&<HSKView state={state} setState={setState}/>}
     </main>
-    <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:580,background:C.card,borderTop:`1.5px solid ${C.line}`,zIndex:100}}>
+    <nav style={{flexShrink:0,background:C.card,borderTop:`1.5px solid ${C.line}`,zIndex:100}}>
       <div style={{display:"flex",overflowX:"auto",padding:"6px 4px 12px",WebkitOverflowScrolling:"touch"}}>
       {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:1,minWidth:52,flexShrink:0}}>
         <div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:tab===t.id?"#FFF8EE":C.inkSoft,background:tab===t.id?C.vermilion:"transparent",width:32,height:32,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",transform:tab===t.id?"rotate(-4deg)":"none",transition:'all 0.2s'}}>{t.zh}</div>
@@ -1973,8 +1972,7 @@ function App(){
       </button>)}
       </div>
     </nav>
-    </div>
-  </div>);
+    </div>);
 }
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
