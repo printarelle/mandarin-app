@@ -410,11 +410,13 @@ const DEF={cards:{},streak:0,lastStudy:null,studyHistory:{},reviewsToday:0,revie
 function getPhrase(state,id){
   if(id<PHRASES.length)return PHRASES[id];
   for(const set of(state.customSets||[])){const p=set.phrases.find(p=>p.id===id);if(p)return p;}
+  const hw=getHskWord(id);if(hw)return hw;
   return null;
 }
 function getAllPhraseIds(state){
   const custom=(state.customSets||[]).flatMap(s=>s.phrases.map(p=>p.id));
-  return[...PHRASES.map((_,i)=>i),...custom];
+  const hskStudied=Object.keys(state.cards).map(Number).filter(id=>id>=20000);
+  return[...PHRASES.map((_,i)=>i),...custom,...hskStudied];
 }
 function loadState(){
   try{
@@ -1144,12 +1146,798 @@ function PhrasebookView(){
   </div>);
 }
 
+
+// ── HSK vocabulary data ───────────────────────────────────────────────
+const HSK_BASE=20000;
+function getHskId(lv,i){return HSK_BASE+(lv-1)*1000+i;}
+function getHskWord(id){
+  if(id<HSK_BASE)return null;
+  const off=id-HSK_BASE,lv=Math.floor(off/1000)+1,idx=off%1000;
+  if(lv<1||lv>5)return null;
+  const w=HSK[lv];if(!w||idx>=w.length)return null;
+  return{...w[idx],id,d:'hsk'+lv};
+}
+const HSK={
+1:[
+  {c:"爱",p:"ài",e:"Love"},
+  {c:"八",p:"bā",e:"8"},
+  {c:"爸爸",p:"bàba",e:"Dad"},
+  {c:"杯子",p:"bēizi",e:"Cup / glass"},
+  {c:"北京",p:"Běijīng",e:"Beijing"},
+  {c:"不客气",p:"bú kèqi",e:"You're welcome"},
+  {c:"菜",p:"cài",e:"Dish / vegetable"},
+  {c:"茶",p:"chá",e:"Tea"},
+  {c:"吃",p:"chī",e:"Eat"},
+  {c:"大",p:"dà",e:"Big / large"},
+  {c:"电脑",p:"diànnǎo",e:"Computer"},
+  {c:"电视",p:"diànshì",e:"Television"},
+  {c:"电影",p:"diànyǐng",e:"Film / movie"},
+  {c:"东西",p:"dōngxi",e:"Thing / stuff"},
+  {c:"都",p:"dōu",e:"All / both"},
+  {c:"读",p:"dú",e:"Read"},
+  {c:"对不起",p:"duìbuqǐ",e:"Sorry"},
+  {c:"多",p:"duō",e:"Many / much"},
+  {c:"多少",p:"duōshao",e:"How many / how much"},
+  {c:"二",p:"èr",e:"2"},
+  {c:"飞机",p:"fēijī",e:"Aeroplane"},
+  {c:"分钟",p:"fēnzhōng",e:"Minute"},
+  {c:"高兴",p:"gāoxìng",e:"Happy / pleased"},
+  {c:"个",p:"gè",e:"MW: general"},
+  {c:"工作",p:"gōngzuò",e:"Work / job"},
+  {c:"汉语",p:"Hànyǔ",e:"Chinese language"},
+  {c:"好",p:"hǎo",e:"Good"},
+  {c:"喝",p:"hē",e:"Drink"},
+  {c:"和",p:"hé",e:"And / with"},
+  {c:"很",p:"hěn",e:"Very"},
+  {c:"回",p:"huí",e:"Return / go back"},
+  {c:"会",p:"huì",e:"Can / know how to"},
+  {c:"几",p:"jǐ",e:"How many / several"},
+  {c:"家",p:"jiā",e:"Home / family"},
+  {c:"今天",p:"jīntiān",e:"Today"},
+  {c:"九",p:"jiǔ",e:"9"},
+  {c:"开",p:"kāi",e:"Open / drive"},
+  {c:"看",p:"kàn",e:"Look / watch / read"},
+  {c:"看见",p:"kànjiàn",e:"See / catch sight of"},
+  {c:"来",p:"lái",e:"Come"},
+  {c:"老师",p:"lǎoshī",e:"Teacher"},
+  {c:"了",p:"le",e:"Particle: completed action"},
+  {c:"冷",p:"lěng",e:"Cold"},
+  {c:"六",p:"liù",e:"6"},
+  {c:"妈妈",p:"māma",e:"Mum"},
+  {c:"买",p:"mǎi",e:"Buy"},
+  {c:"没关系",p:"méi guānxi",e:"Never mind / it's fine"},
+  {c:"没有",p:"méiyǒu",e:"Don't have / haven't"},
+  {c:"哪",p:"nǎ",e:"Which"},
+  {c:"那",p:"nà",e:"That"},
+  {c:"呢",p:"ne",e:"Particle: what about...?"},
+  {c:"你",p:"nǐ",e:"You"},
+  {c:"年",p:"nián",e:"Year"},
+  {c:"女儿",p:"nǚ'ér",e:"Daughter"},
+  {c:"朋友",p:"péngyou",e:"Friend"},
+  {c:"钱",p:"qián",e:"Money"},
+  {c:"去",p:"qù",e:"Go"},
+  {c:"热",p:"rè",e:"Hot"},
+  {c:"人",p:"rén",e:"Person / people"},
+  {c:"认识",p:"rènshi",e:"Know / recognise"},
+  {c:"三",p:"sān",e:"3"},
+  {c:"商店",p:"shāngdiàn",e:"Shop / store"},
+  {c:"上午",p:"shàngwǔ",e:"Morning (AM)"},
+  {c:"少",p:"shǎo",e:"Few / little"},
+  {c:"谁",p:"shéi",e:"Who"},
+  {c:"什么",p:"shénme",e:"What"},
+  {c:"十",p:"shí",e:"10"},
+  {c:"时候",p:"shíhou",e:"Time / moment"},
+  {c:"是",p:"shì",e:"Be / is / am / are"},
+  {c:"书",p:"shū",e:"Book"},
+  {c:"水",p:"shuǐ",e:"Water"},
+  {c:"睡觉",p:"shuìjiào",e:"Sleep"},
+  {c:"说",p:"shuō",e:"Say / speak"},
+  {c:"四",p:"sì",e:"4"},
+  {c:"岁",p:"suì",e:"Years old"},
+  {c:"他",p:"tā",e:"He / him"},
+  {c:"她",p:"tā",e:"She / her"},
+  {c:"太",p:"tài",e:"Too / so (excessive)"},
+  {c:"天气",p:"tiānqì",e:"Weather"},
+  {c:"听",p:"tīng",e:"Listen / hear"},
+  {c:"同学",p:"tóngxué",e:"Classmate"},
+  {c:"我",p:"wǒ",e:"I / me"},
+  {c:"我们",p:"wǒmen",e:"We / us"},
+  {c:"五",p:"wǔ",e:"5"},
+  {c:"下午",p:"xiàwǔ",e:"Afternoon"},
+  {c:"先生",p:"xiānsheng",e:"Mr. / sir"},
+  {c:"现在",p:"xiànzài",e:"Now"},
+  {c:"想",p:"xiǎng",e:"Want to / think"},
+  {c:"小",p:"xiǎo",e:"Small / little"},
+  {c:"写",p:"xiě",e:"Write"},
+  {c:"谢谢",p:"xièxie",e:"Thank you"},
+  {c:"星期",p:"xīngqī",e:"Week"},
+  {c:"学生",p:"xuésheng",e:"Student"},
+  {c:"学习",p:"xuéxí",e:"Study / learn"},
+  {c:"一",p:"yī",e:"1"},
+  {c:"一点儿",p:"yīdiǎnr",e:"A little bit"},
+  {c:"衣服",p:"yīfu",e:"Clothes"},
+  {c:"医生",p:"yīshēng",e:"Doctor"},
+  {c:"医院",p:"yīyuàn",e:"Hospital"},
+  {c:"也",p:"yě",e:"Also / too"},
+  {c:"要",p:"yào",e:"Want / need / will"},
+  {c:"有",p:"yǒu",e:"Have / there is"},
+  {c:"再见",p:"zàijiàn",e:"Goodbye"},
+  {c:"在",p:"zài",e:"At / in / be at"},
+  {c:"怎么",p:"zěnme",e:"How / why"},
+  {c:"这",p:"zhè",e:"This"},
+  {c:"中国",p:"Zhōngguó",e:"China"},
+  {c:"中午",p:"zhōngwǔ",e:"Noon"},
+  {c:"住",p:"zhù",e:"Live / stay"},
+  {c:"坐",p:"zuò",e:"Sit / take (transport)"},
+  {c:"做",p:"zuò",e:"Do / make"},
+],
+2:[
+  {c:"吧",p:"ba",e:"Particle: suggestion / confirmation"},
+  {c:"白",p:"bái",e:"White"},
+  {c:"百",p:"bǎi",e:"Hundred"},
+  {c:"帮助",p:"bāngzhù",e:"Help / assist"},
+  {c:"报纸",p:"bàozhǐ",e:"Newspaper"},
+  {c:"比",p:"bǐ",e:"Compare / than"},
+  {c:"别",p:"bié",e:"Don't / other"},
+  {c:"宾馆",p:"bīnguǎn",e:"Hotel"},
+  {c:"长",p:"cháng",e:"Long"},
+  {c:"唱歌",p:"chànggē",e:"Sing (a song)"},
+  {c:"出",p:"chū",e:"Exit / go out"},
+  {c:"穿",p:"chuān",e:"Wear / put on"},
+  {c:"从",p:"cóng",e:"From"},
+  {c:"错",p:"cuò",e:"Wrong / mistake"},
+  {c:"打电话",p:"dǎ diànhuà",e:"Make a phone call"},
+  {c:"大家",p:"dàjiā",e:"Everyone"},
+  {c:"但是",p:"dànshì",e:"But / however"},
+  {c:"地方",p:"dìfang",e:"Place"},
+  {c:"弟弟",p:"dìdi",e:"Younger brother"},
+  {c:"第一",p:"dì yī",e:"First"},
+  {c:"懂",p:"dǒng",e:"Understand"},
+  {c:"对",p:"duì",e:"Correct / right"},
+  {c:"房间",p:"fángjiān",e:"Room"},
+  {c:"非常",p:"fēicháng",e:"Extremely / very much"},
+  {c:"服务员",p:"fúwùyuán",e:"Waiter / staff"},
+  {c:"告诉",p:"gàosu",e:"Tell"},
+  {c:"哥哥",p:"gēge",e:"Elder brother"},
+  {c:"高",p:"gāo",e:"Tall / high"},
+  {c:"贵",p:"guì",e:"Expensive"},
+  {c:"过",p:"guò",e:"Pass / cross / (exp. particle)"},
+  {c:"还",p:"hái",e:"Still / also / yet"},
+  {c:"孩子",p:"háizi",e:"Child"},
+  {c:"好吃",p:"hǎochī",e:"Delicious"},
+  {c:"黑",p:"hēi",e:"Black"},
+  {c:"红",p:"hóng",e:"Red"},
+  {c:"火车站",p:"huǒchē zhàn",e:"Train station"},
+  {c:"机场",p:"jīchǎng",e:"Airport"},
+  {c:"鸡蛋",p:"jīdàn",e:"Egg"},
+  {c:"件",p:"jiàn",e:"MW: clothes / matters"},
+  {c:"教室",p:"jiàoshì",e:"Classroom"},
+  {c:"姐姐",p:"jiějie",e:"Elder sister"},
+  {c:"介绍",p:"jièshào",e:"Introduce"},
+  {c:"进",p:"jìn",e:"Enter / go in"},
+  {c:"近",p:"jìn",e:"Near / close"},
+  {c:"就",p:"jiù",e:"Just / then / exactly"},
+  {c:"觉得",p:"juéde",e:"Feel / think"},
+  {c:"咖啡",p:"kāfēi",e:"Coffee"},
+  {c:"开始",p:"kāishǐ",e:"Start / begin"},
+  {c:"可能",p:"kěnéng",e:"Maybe / possible"},
+  {c:"可以",p:"kěyǐ",e:"Can / may / allowed to"},
+  {c:"块",p:"kuài",e:"Yuan (spoken) / MW: piece"},
+  {c:"快",p:"kuài",e:"Fast / quick"},
+  {c:"快乐",p:"kuàilè",e:"Happy / joyful"},
+  {c:"累",p:"lèi",e:"Tired"},
+  {c:"离",p:"lí",e:"Away from / distance"},
+  {c:"两",p:"liǎng",e:"Two (of something)"},
+  {c:"零",p:"líng",e:"Zero"},
+  {c:"路",p:"lù",e:"Road / route"},
+  {c:"旅游",p:"lǚyóu",e:"Travel / tourism"},
+  {c:"妹妹",p:"mèimei",e:"Younger sister"},
+  {c:"门",p:"mén",e:"Door / gate"},
+  {c:"男",p:"nán",e:"Male / man"},
+  {c:"您",p:"nín",e:"You (polite)"},
+  {c:"女",p:"nǚ",e:"Female / woman"},
+  {c:"旁边",p:"pángbiān",e:"Beside / next to"},
+  {c:"跑步",p:"pǎobù",e:"Run / jog"},
+  {c:"便宜",p:"piányí",e:"Cheap / inexpensive"},
+  {c:"漂亮",p:"piàoliang",e:"Pretty / beautiful"},
+  {c:"苹果",p:"píngguǒ",e:"Apple"},
+  {c:"起床",p:"qǐchuáng",e:"Get up"},
+  {c:"千",p:"qiān",e:"Thousand"},
+  {c:"请",p:"qǐng",e:"Please / invite"},
+  {c:"让",p:"ràng",e:"Let / allow / make"},
+  {c:"日",p:"rì",e:"Day / sun"},
+  {c:"如果",p:"rúguǒ",e:"If"},
+  {c:"身体",p:"shēntǐ",e:"Body / health"},
+  {c:"生病",p:"shēngbìng",e:"Get sick / be ill"},
+  {c:"生日",p:"shēngrì",e:"Birthday"},
+  {c:"时间",p:"shíjiān",e:"Time"},
+  {c:"事情",p:"shìqing",e:"Matter / thing / affair"},
+  {c:"手",p:"shǒu",e:"Hand"},
+  {c:"手机",p:"shǒujī",e:"Mobile phone"},
+  {c:"送",p:"sòng",e:"Give / send / see off"},
+  {c:"虽然",p:"suīrán",e:"Although"},
+  {c:"它",p:"tā",e:"It"},
+  {c:"踢足球",p:"tī zúqiú",e:"Play football"},
+  {c:"跳舞",p:"tiàowǔ",e:"Dance"},
+  {c:"玩",p:"wán",e:"Play / have fun"},
+  {c:"万",p:"wàn",e:"10,000"},
+  {c:"为什么",p:"wèishénme",e:"Why"},
+  {c:"问",p:"wèn",e:"Ask"},
+  {c:"问题",p:"wèntí",e:"Question / problem"},
+  {c:"希望",p:"xīwàng",e:"Hope / wish"},
+  {c:"洗",p:"xǐ",e:"Wash"},
+  {c:"小时",p:"xiǎoshí",e:"Hour"},
+  {c:"笑",p:"xiào",e:"Laugh / smile"},
+  {c:"新",p:"xīn",e:"New"},
+  {c:"姓",p:"xìng",e:"Surname"},
+  {c:"休息",p:"xiūxi",e:"Rest"},
+  {c:"雪",p:"xuě",e:"Snow"},
+  {c:"颜色",p:"yánsè",e:"Colour"},
+  {c:"眼睛",p:"yǎnjing",e:"Eye"},
+  {c:"已经",p:"yǐjīng",e:"Already"},
+  {c:"以前",p:"yǐqián",e:"Before / in the past"},
+  {c:"一起",p:"yīqǐ",e:"Together"},
+  {c:"意思",p:"yìsi",e:"Meaning / interesting"},
+  {c:"因为",p:"yīnwèi",e:"Because"},
+  {c:"用",p:"yòng",e:"Use"},
+  {c:"游泳",p:"yóuyǒng",e:"Swim"},
+  {c:"右边",p:"yòubiān",e:"Right side"},
+  {c:"语言",p:"yǔyán",e:"Language"},
+  {c:"元",p:"yuán",e:"Yuan (formal)"},
+  {c:"远",p:"yuǎn",e:"Far"},
+  {c:"运动",p:"yùndòng",e:"Exercise / sport"},
+  {c:"再",p:"zài",e:"Again / then"},
+  {c:"早上",p:"zǎoshang",e:"Morning (early)"},
+  {c:"怎么样",p:"zěnmeyàng",e:"How about it / what's it like"},
+  {c:"丈夫",p:"zhàngfu",e:"Husband"},
+  {c:"找",p:"zhǎo",e:"Look for / find"},
+  {c:"着",p:"zhe",e:"Particle: ongoing state"},
+  {c:"真",p:"zhēn",e:"Real / truly"},
+  {c:"正在",p:"zhèngzài",e:"In the process of"},
+  {c:"知道",p:"zhīdào",e:"Know"},
+  {c:"准备",p:"zhǔnbèi",e:"Prepare / plan to"},
+  {c:"走",p:"zǒu",e:"Walk / go / leave"},
+  {c:"最",p:"zuì",e:"Most / -est"},
+  {c:"左边",p:"zuǒbiān",e:"Left side"},
+  {c:"作业",p:"zuòyè",e:"Homework"},
+],
+3:[
+  {c:"阿姨",p:"āyí",e:"Aunt / auntie"},
+  {c:"啊",p:"a",e:"Particle: ah / oh"},
+  {c:"矮",p:"ǎi",e:"Short (height)"},
+  {c:"爱好",p:"àihào",e:"Hobby / interest"},
+  {c:"安静",p:"ānjìng",e:"Quiet"},
+  {c:"把",p:"bǎ",e:"MW for handles; disposal particle"},
+  {c:"被",p:"bèi",e:"Passive particle: by"},
+  {c:"鼻子",p:"bízi",e:"Nose"},
+  {c:"必须",p:"bìxū",e:"Must / have to"},
+  {c:"变化",p:"biànhuà",e:"Change"},
+  {c:"冰箱",p:"bīngxiāng",e:"Refrigerator"},
+  {c:"不但",p:"bùdàn",e:"Not only"},
+  {c:"菜单",p:"càidān",e:"Menu"},
+  {c:"参加",p:"cānjiā",e:"Participate / join"},
+  {c:"草",p:"cǎo",e:"Grass"},
+  {c:"层",p:"céng",e:"Floor / layer"},
+  {c:"差",p:"chà",e:"Differ / not good"},
+  {c:"超市",p:"chāoshì",e:"Supermarket"},
+  {c:"衬衫",p:"chènshān",e:"Shirt"},
+  {c:"城市",p:"chéngshì",e:"City"},
+  {c:"迟到",p:"chídào",e:"Be late"},
+  {c:"除了",p:"chúle",e:"Except for / besides"},
+  {c:"船",p:"chuán",e:"Boat / ship"},
+  {c:"词语",p:"cíyǔ",e:"Word / phrase"},
+  {c:"打算",p:"dǎsuàn",e:"Plan to / intend"},
+  {c:"担心",p:"dānxīn",e:"Worry / be concerned"},
+  {c:"地",p:"de/dì",e:"Adverb particle / ground"},
+  {c:"得",p:"de/děi",e:"Structural particle / must"},
+  {c:"地铁",p:"dìtiě",e:"Metro / subway"},
+  {c:"地图",p:"dìtú",e:"Map"},
+  {c:"电梯",p:"diàntī",e:"Lift / elevator"},
+  {c:"东",p:"dōng",e:"East"},
+  {c:"发现",p:"fāxiàn",e:"Discover / find out"},
+  {c:"方便",p:"fāngbiàn",e:"Convenient"},
+  {c:"放",p:"fàng",e:"Put / place / release"},
+  {c:"分",p:"fēn",e:"Minute / cent / divide"},
+  {c:"服务",p:"fúwù",e:"Service"},
+  {c:"附近",p:"fùjìn",e:"Nearby / in the vicinity"},
+  {c:"感觉",p:"gǎnjué",e:"Feel / feeling"},
+  {c:"感谢",p:"gǎnxiè",e:"Grateful / thank"},
+  {c:"刚才",p:"gāngcái",e:"Just now"},
+  {c:"更",p:"gèng",e:"Even more"},
+  {c:"关",p:"guān",e:"Close / shut"},
+  {c:"关心",p:"guānxīn",e:"Care about"},
+  {c:"关系",p:"guānxi",e:"Relationship"},
+  {c:"国",p:"guó",e:"Country"},
+  {c:"过去",p:"guòqù",e:"Past / go over"},
+  {c:"还是",p:"háishi",e:"Or / still"},
+  {c:"黑板",p:"hēibǎn",e:"Blackboard"},
+  {c:"护照",p:"hùzhào",e:"Passport"},
+  {c:"花",p:"huā",e:"Flower / spend"},
+  {c:"画",p:"huà",e:"Draw / painting"},
+  {c:"坏",p:"huài",e:"Bad / broken"},
+  {c:"换",p:"huàn",e:"Exchange / change"},
+  {c:"环境",p:"huánjìng",e:"Environment"},
+  {c:"还",p:"huán",e:"Return / give back"},
+  {c:"回答",p:"huídá",e:"Answer / reply"},
+  {c:"会议",p:"huìyì",e:"Meeting"},
+  {c:"活动",p:"huódòng",e:"Activity"},
+  {c:"火",p:"huǒ",e:"Fire"},
+  {c:"机会",p:"jīhuì",e:"Opportunity / chance"},
+  {c:"极",p:"jí",e:"Extremely / pole"},
+  {c:"记得",p:"jìde",e:"Remember"},
+  {c:"季节",p:"jìjié",e:"Season"},
+  {c:"简单",p:"jiǎndān",e:"Simple / easy"},
+  {c:"检查",p:"jiǎnchá",e:"Check / inspect"},
+  {c:"健康",p:"jiànkāng",e:"Health / healthy"},
+  {c:"讲",p:"jiǎng",e:"Speak / explain"},
+  {c:"脚",p:"jiǎo",e:"Foot"},
+  {c:"教",p:"jiāo",e:"Teach"},
+  {c:"接",p:"jiē",e:"Receive / pick up"},
+  {c:"节目",p:"jiémù",e:"Programme"},
+  {c:"节日",p:"jiérì",e:"Festival"},
+  {c:"结束",p:"jiéshù",e:"End / finish"},
+  {c:"解决",p:"jiějué",e:"Solve / resolve"},
+  {c:"借",p:"jiè",e:"Borrow / lend"},
+  {c:"经常",p:"jīngcháng",e:"Often / frequently"},
+  {c:"经过",p:"jīngguò",e:"Pass by / go through"},
+  {c:"经济",p:"jīngjì",e:"Economy"},
+  {c:"久",p:"jiǔ",e:"Long (time)"},
+  {c:"旧",p:"jiù",e:"Old / used"},
+  {c:"举行",p:"jǔxíng",e:"Hold (an event)"},
+  {c:"决定",p:"juédìng",e:"Decide"},
+  {c:"渴",p:"kě",e:"Thirsty"},
+  {c:"刻",p:"kè",e:"Quarter (hour)"},
+  {c:"客人",p:"kèrén",e:"Guest / visitor"},
+  {c:"课",p:"kè",e:"Class / lesson"},
+  {c:"空调",p:"kōngtiáo",e:"Air conditioning"},
+  {c:"口",p:"kǒu",e:"Mouth / MW for family members"},
+  {c:"块",p:"kuài",e:"Yuan (spoken)"},
+  {c:"裤子",p:"kùzi",e:"Trousers"},
+  {c:"来不及",p:"lái bu jí",e:"Too late to do"},
+  {c:"来自",p:"láizì",e:"Come from"},
+  {c:"礼物",p:"lǐwù",e:"Gift"},
+  {c:"历史",p:"lìshǐ",e:"History"},
+  {c:"联系",p:"liánxì",e:"Contact / get in touch"},
+  {c:"两",p:"liǎng",e:"Two / a couple of"},
+  {c:"了解",p:"liǎojiě",e:"Understand / know about"},
+  {c:"邻居",p:"línjū",e:"Neighbour"},
+  {c:"楼",p:"lóu",e:"Building / floor"},
+  {c:"马",p:"mǎ",e:"Horse"},
+  {c:"满意",p:"mǎnyì",e:"Satisfied"},
+  {c:"帽子",p:"màozi",e:"Hat"},
+  {c:"面条",p:"miàntiáo",e:"Noodles"},
+  {c:"明白",p:"míngbái",e:"Understand / clear"},
+  {c:"牛奶",p:"niúnǎi",e:"Milk"},
+  {c:"努力",p:"nǔlì",e:"Work hard / effort"},
+  {c:"爬山",p:"pá shān",e:"Climb a mountain"},
+  {c:"盘子",p:"pánzi",e:"Plate / dish"},
+  {c:"啤酒",p:"píjiǔ",e:"Beer"},
+  {c:"其实",p:"qíshí",e:"Actually / in fact"},
+  {c:"其他",p:"qítā",e:"Other"},
+  {c:"铅笔",p:"qiānbǐ",e:"Pencil"},
+  {c:"清楚",p:"qīngchǔ",e:"Clear"},
+  {c:"请假",p:"qǐngjià",e:"Ask for leave"},
+  {c:"秋",p:"qiū",e:"Autumn"},
+  {c:"裙子",p:"qúnzi",e:"Skirt"},
+  {c:"然后",p:"ránhòu",e:"Then / after that"},
+  {c:"热情",p:"rèqíng",e:"Enthusiastic / warm"},
+  {c:"认为",p:"rènwéi",e:"Think / believe"},
+  {c:"容易",p:"róngyì",e:"Easy"},
+  {c:"如果",p:"rúguǒ",e:"If"},
+  {c:"伞",p:"sǎn",e:"Umbrella"},
+  {c:"上班",p:"shàngbān",e:"Go to work"},
+  {c:"生气",p:"shēngqì",e:"Angry"},
+  {c:"声音",p:"shēngyīn",e:"Sound / voice"},
+  {c:"使",p:"shǐ",e:"Make / cause / use"},
+  {c:"世界",p:"shìjiè",e:"World"},
+  {c:"瘦",p:"shòu",e:"Thin / slim"},
+  {c:"叔叔",p:"shūshu",e:"Uncle"},
+  {c:"树",p:"shù",e:"Tree"},
+  {c:"数学",p:"shùxué",e:"Mathematics"},
+  {c:"双",p:"shuāng",e:"Pair / MW: pair"},
+  {c:"所以",p:"suǒyǐ",e:"Therefore / so"},
+  {c:"它们",p:"tāmen",e:"They (objects/animals)"},
+  {c:"抬",p:"tái",e:"Lift / raise"},
+  {c:"特别",p:"tèbié",e:"Special / especially"},
+  {c:"提",p:"tí",e:"Carry / raise / mention"},
+  {c:"甜",p:"tián",e:"Sweet"},
+  {c:"条",p:"tiáo",e:"MW: strip / long objects"},
+  {c:"同事",p:"tóngshì",e:"Colleague"},
+  {c:"头",p:"tóu",e:"Head"},
+  {c:"突然",p:"tūrán",e:"Suddenly"},
+  {c:"腿",p:"tuǐ",e:"Leg"},
+  {c:"完成",p:"wánchéng",e:"Complete / finish"},
+  {c:"忘记",p:"wàngjì",e:"Forget"},
+  {c:"为了",p:"wèile",e:"In order to"},
+  {c:"位",p:"wèi",e:"MW: people (polite)"},
+  {c:"文化",p:"wénhuà",e:"Culture"},
+  {c:"西",p:"xī",e:"West"},
+  {c:"习惯",p:"xíguàn",e:"Habit / be used to"},
+  {c:"夏",p:"xià",e:"Summer"},
+  {c:"校长",p:"xiàozhǎng",e:"Headteacher"},
+  {c:"辛苦",p:"xīnkǔ",e:"Hardworking / hard"},
+  {c:"行李箱",p:"xínglixiāng",e:"Suitcase"},
+  {c:"熊猫",p:"xióngmāo",e:"Giant panda"},
+  {c:"选择",p:"xuǎnzé",e:"Choose"},
+  {c:"要求",p:"yāoqiú",e:"Require / demand"},
+  {c:"一定",p:"yīdìng",e:"Certainly / must"},
+  {c:"一共",p:"yīgòng",e:"Altogether"},
+  {c:"以后",p:"yǐhòu",e:"After / later"},
+  {c:"一会儿",p:"yīhuìr",e:"A moment"},
+  {c:"音乐",p:"yīnyuè",e:"Music"},
+  {c:"银行",p:"yínháng",e:"Bank"},
+  {c:"饮料",p:"yǐnliào",e:"Drink / beverage"},
+  {c:"有名",p:"yǒumíng",e:"Famous"},
+  {c:"又",p:"yòu",e:"Again / also"},
+  {c:"鱼",p:"yú",e:"Fish"},
+  {c:"月",p:"yuè",e:"Month / moon"},
+  {c:"站",p:"zhàn",e:"Stand / station / stop"},
+  {c:"照顾",p:"zhàogù",e:"Take care of"},
+  {c:"照片",p:"zhàopiàn",e:"Photograph"},
+  {c:"只",p:"zhǐ",e:"Only / just"},
+  {c:"终于",p:"zhōngyú",e:"Finally / at last"},
+  {c:"重要",p:"zhòngyào",e:"Important"},
+  {c:"主要",p:"zhǔyào",e:"Main / major"},
+  {c:"注意",p:"zhùyì",e:"Pay attention to"},
+  {c:"字",p:"zì",e:"Character / word"},
+  {c:"自己",p:"zìjǐ",e:"Oneself"},
+  {c:"总是",p:"zǒngshì",e:"Always"},
+  {c:"最近",p:"zuìjìn",e:"Recently"},
+  {c:"作",p:"zuò",e:"Work / compose"},
+],
+4:[
+  {c:"按时",p:"ànshí",e:"On time"},
+  {c:"安排",p:"ānpái",e:"Arrange / plan"},
+  {c:"包括",p:"bāokuò",e:"Include"},
+  {c:"保护",p:"bǎohù",e:"Protect"},
+  {c:"保证",p:"bǎozhèng",e:"Guarantee"},
+  {c:"比较",p:"bǐjiào",e:"Compare / relatively"},
+  {c:"毕业",p:"bìyè",e:"Graduate"},
+  {c:"表示",p:"biǎoshì",e:"Express / indicate"},
+  {c:"表演",p:"biǎoyǎn",e:"Perform"},
+  {c:"表扬",p:"biǎoyáng",e:"Praise"},
+  {c:"不得不",p:"bùdébù",e:"Have no choice but to"},
+  {c:"不管",p:"bùguǎn",e:"No matter / regardless"},
+  {c:"不仅",p:"bùjǐn",e:"Not only"},
+  {c:"步骤",p:"bùzhòu",e:"Step / procedure"},
+  {c:"成功",p:"chénggōng",e:"Succeed"},
+  {c:"乘坐",p:"chéngzuò",e:"Ride / travel by"},
+  {c:"出发",p:"chūfā",e:"Depart / set out"},
+  {c:"存",p:"cún",e:"Save / store"},
+  {c:"打折",p:"dǎzhé",e:"Discount"},
+  {c:"代表",p:"dàibiǎo",e:"Represent / representative"},
+  {c:"当时",p:"dāngshí",e:"At that time"},
+  {c:"到处",p:"dàochù",e:"Everywhere"},
+  {c:"道歉",p:"dàoqiàn",e:"Apologise"},
+  {c:"灯",p:"dēng",e:"Light / lamp"},
+  {c:"地球",p:"dìqiú",e:"Earth"},
+  {c:"调查",p:"diàochá",e:"Investigate"},
+  {c:"动作",p:"dòngzuò",e:"Movement / action"},
+  {c:"堵车",p:"dǔ chē",e:"Traffic jam"},
+  {c:"对于",p:"duìyú",e:"Regarding / as for"},
+  {c:"发展",p:"fāzhǎn",e:"Develop"},
+  {c:"方面",p:"fāngmiàn",e:"Aspect"},
+  {c:"否则",p:"fǒuzé",e:"Otherwise"},
+  {c:"复杂",p:"fùzá",e:"Complex / complicated"},
+  {c:"感动",p:"gǎndòng",e:"Move (emotionally)"},
+  {c:"各",p:"gè",e:"Each / various"},
+  {c:"根据",p:"gēnjù",e:"According to / based on"},
+  {c:"工资",p:"gōngzī",e:"Salary / wages"},
+  {c:"估计",p:"gūjì",e:"Estimate / reckon"},
+  {c:"故意",p:"gùyì",e:"On purpose / deliberately"},
+  {c:"挂",p:"guà",e:"Hang"},
+  {c:"观众",p:"guānzhòng",e:"Audience"},
+  {c:"合适",p:"héshì",e:"Suitable / appropriate"},
+  {c:"互联网",p:"hùliánwǎng",e:"Internet"},
+  {c:"互相",p:"hùxiāng",e:"Each other / mutually"},
+  {c:"获得",p:"huòdé",e:"Obtain / achieve"},
+  {c:"积极",p:"jījí",e:"Positive / proactive"},
+  {c:"及时",p:"jíshí",e:"In time / promptly"},
+  {c:"即使",p:"jíshǐ",e:"Even if"},
+  {c:"记者",p:"jìzhě",e:"Journalist"},
+  {c:"价格",p:"jiàgé",e:"Price"},
+  {c:"坚持",p:"jiānchí",e:"Persist / stick to"},
+  {c:"建议",p:"jiànyì",e:"Suggest / suggestion"},
+  {c:"将来",p:"jiānglái",e:"Future"},
+  {c:"奖金",p:"jiǎngjīn",e:"Bonus"},
+  {c:"竟然",p:"jìngrán",e:"Unexpectedly / to one's surprise"},
+  {c:"举",p:"jǔ",e:"Lift / give (example)"},
+  {c:"开心",p:"kāixīn",e:"Happy"},
+  {c:"考虑",p:"kǎolǜ",e:"Consider"},
+  {c:"可是",p:"kěshì",e:"But / however"},
+  {c:"克服",p:"kèfú",e:"Overcome"},
+  {c:"来不及",p:"lái bu jí",e:"No time / too late"},
+  {c:"来得及",p:"lái de jí",e:"There's time / not too late"},
+  {c:"利用",p:"lìyòng",e:"Use / make use of"},
+  {c:"另外",p:"lìngwài",e:"Additionally / besides"},
+  {c:"麻烦",p:"máfan",e:"Trouble / troublesome"},
+  {c:"满",p:"mǎn",e:"Full"},
+  {c:"没想到",p:"méi xiǎngdào",e:"Unexpectedly"},
+  {c:"目的",p:"mùdì",e:"Purpose / aim"},
+  {c:"难道",p:"nándào",e:"Could it be that...?"},
+  {c:"耐心",p:"nàixīn",e:"Patient"},
+  {c:"年龄",p:"niánlíng",e:"Age"},
+  {c:"平时",p:"píngshí",e:"Normally / usually"},
+  {c:"其中",p:"qízhōng",e:"Among them"},
+  {c:"轻松",p:"qīngsōng",e:"Relaxed / at ease"},
+  {c:"取消",p:"qǔxiāo",e:"Cancel"},
+  {c:"确实",p:"quèshí",e:"Indeed / really"},
+  {c:"缺少",p:"quēshǎo",e:"Lack"},
+  {c:"生活",p:"shēnghuó",e:"Life / live"},
+  {c:"实际上",p:"shíjìshàng",e:"In fact / actually"},
+  {c:"首先",p:"shǒuxiān",e:"First of all"},
+  {c:"顺利",p:"shùnlì",e:"Smooth / successful"},
+  {c:"虽然",p:"suīrán",e:"Although"},
+  {c:"提供",p:"tígōng",e:"Provide"},
+  {c:"通过",p:"tōngguò",e:"Through / by means of"},
+  {c:"推",p:"tuī",e:"Push"},
+  {c:"微博",p:"wēibó",e:"Microblog / Weibo"},
+  {c:"相反",p:"xiāngfǎn",e:"Opposite"},
+  {c:"相同",p:"xiāngtóng",e:"Same / identical"},
+  {c:"响",p:"xiǎng",e:"Ring / sound"},
+  {c:"幸福",p:"xìngfú",e:"Happy / happiness"},
+  {c:"性格",p:"xìnggé",e:"Personality"},
+  {c:"需要",p:"xūyào",e:"Need"},
+  {c:"延误",p:"yánwù",e:"Delay"},
+  {c:"严重",p:"yánzhòng",e:"Serious / severe"},
+  {c:"研究",p:"yánjiū",e:"Research"},
+  {c:"演出",p:"yǎnchū",e:"Performance / show"},
+  {c:"一旦",p:"yīdàn",e:"Once / as soon as"},
+  {c:"以为",p:"yǐwéi",e:"Think (mistakenly)"},
+  {c:"影响",p:"yǐngxiǎng",e:"Influence"},
+  {c:"优秀",p:"yōuxiù",e:"Excellent"},
+  {c:"重",p:"zhòng",e:"Heavy"},
+  {c:"周围",p:"zhōuwéi",e:"Surroundings"},
+  {c:"主动",p:"zhǔdòng",e:"Take initiative"},
+  {c:"祝贺",p:"zhùhè",e:"Congratulate"},
+  {c:"自然",p:"zìrán",e:"Nature / natural"},
+  {c:"遵守",p:"zūnshǒu",e:"Abide by / observe"},
+],
+5:[
+  {c:"爱护",p:"àihù",e:"Take care of / cherish"},
+  {c:"按照",p:"ànzhào",e:"According to"},
+  {c:"摆",p:"bǎi",e:"Place / arrange"},
+  {c:"办理",p:"bànlǐ",e:"Handle / manage"},
+  {c:"包含",p:"bāohán",e:"Contain / include"},
+  {c:"抱怨",p:"bàoyuàn",e:"Complain"},
+  {c:"背景",p:"bèijǐng",e:"Background"},
+  {c:"必要",p:"bìyào",e:"Necessary"},
+  {c:"避免",p:"bìmiǎn",e:"Avoid"},
+  {c:"彼此",p:"bǐcǐ",e:"Each other"},
+  {c:"标准",p:"biāozhǔn",e:"Standard / criterion"},
+  {c:"不断",p:"búduàn",e:"Continuously"},
+  {c:"不得了",p:"bùdéliǎo",e:"Terrible / extreme"},
+  {c:"财富",p:"cáifù",e:"Wealth"},
+  {c:"产品",p:"chǎnpǐn",e:"Product"},
+  {c:"长途",p:"chángtú",e:"Long distance"},
+  {c:"承认",p:"chéngrèn",e:"Admit"},
+  {c:"吃惊",p:"chī jīng",e:"Surprised / shocked"},
+  {c:"充分",p:"chōngfèn",e:"Sufficient / full"},
+  {c:"创造",p:"chuàngzào",e:"Create"},
+  {c:"此外",p:"cǐwài",e:"Moreover / besides"},
+  {c:"聪明",p:"cōngmíng",e:"Clever / smart"},
+  {c:"从而",p:"cóng'ér",e:"Thus / as a result"},
+  {c:"存在",p:"cúnzài",e:"Exist"},
+  {c:"当然",p:"dāngrán",e:"Of course / naturally"},
+  {c:"道理",p:"dàolǐ",e:"Reason / logic"},
+  {c:"等待",p:"děngdài",e:"Wait for"},
+  {c:"地位",p:"dìwèi",e:"Status / position"},
+  {c:"独立",p:"dúlì",e:"Independent"},
+  {c:"对比",p:"duìbǐ",e:"Contrast / compare"},
+  {c:"对象",p:"duìxiàng",e:"Object / partner"},
+  {c:"反对",p:"fǎnduì",e:"Oppose"},
+  {c:"方式",p:"fāngshì",e:"Method / way"},
+  {c:"丰富",p:"fēngfù",e:"Rich / abundant"},
+  {c:"负责",p:"fùzé",e:"Responsible"},
+  {c:"改变",p:"gǎibiàn",e:"Change"},
+  {c:"个人",p:"gèrén",e:"Individual / personal"},
+  {c:"宫殿",p:"gōngdiàn",e:"Palace"},
+  {c:"观点",p:"guāndiǎn",e:"Point of view"},
+  {c:"过分",p:"guòfèn",e:"Excessive"},
+  {c:"合理",p:"hélǐ",e:"Reasonable"},
+  {c:"宏伟",p:"hóngwěi",e:"Grand / magnificent"},
+  {c:"吸引",p:"xīyǐn",e:"Attract"},
+  {c:"系统",p:"xìtǒng",e:"System"},
+  {c:"现代",p:"xiàndài",e:"Modern"},
+  {c:"消费",p:"xiāofèi",e:"Consume / consumption"},
+  {c:"信任",p:"xìnrèn",e:"Trust"},
+  {c:"幸运",p:"xìngyùn",e:"Lucky"},
+  {c:"选手",p:"xuǎnshǒu",e:"Competitor / player"},
+  {c:"延伸",p:"yánshēn",e:"Extend"},
+  {c:"养成",p:"yǎngchéng",e:"Develop (habit)"},
+  {c:"依然",p:"yīrán",e:"Still / as before"},
+  {c:"意义",p:"yìyì",e:"Meaning / significance"},
+  {c:"尽管",p:"jǐnguǎn",e:"Although / despite"},
+  {c:"精彩",p:"jīngcǎi",e:"Wonderful / brilliant"},
+  {c:"竞争",p:"jìngzhēng",e:"Compete"},
+  {c:"决心",p:"juéxīn",e:"Determination"},
+  {c:"逐渐",p:"zhújiàn",e:"Gradually"},
+  {c:"总结",p:"zǒngjié",e:"Summarise"},
+  {c:"最终",p:"zuìzhōng",e:"Finally / ultimately"},
+],
+};
+const HSK_GRAMMAR={
+1:[
+  {p:"S + 是 + N",ex:"我是爱尔兰人",en:"I am Irish",note:"To be: identity"},
+  {p:"S + 有 + N",ex:"我有护照",en:"I have a passport",note:"To have: possession"},
+  {p:"S + 很 + Adj",ex:"今天很热",en:"Today is very hot",note:"Adjective predicate"},
+  {p:"S + 去/来 + Place",ex:"我去机场",en:"I go to the airport",note:"Simple movement"},
+  {p:"S + 不 + V",ex:"我不吃肉",en:"I don't eat meat",note:"Negation with 不"},
+  {p:"...吗?",ex:"你是学生吗？",en:"Are you a student?",note:"Yes/no question"},
+],
+2:[
+  {p:"S + 想 + V",ex:"我想去成都",en:"I want to go to Chengdu",note:"Expressing desires"},
+  {p:"S + 觉得 + ...",ex:"我觉得很好吃",en:"I think it's delicious",note:"Expressing opinion"},
+  {p:"S + 喜欢 + V/N",ex:"我喜欢喝茶",en:"I like drinking tea",note:"Expressing likes"},
+  {p:"时间 + 以前/以后",ex:"吃饭以前洗手",en:"Wash hands before eating",note:"Before and after"},
+  {p:"虽然...但是...",ex:"虽然辣，但是好吃",en:"Although spicy, it's delicious",note:"Concession"},
+  {p:"除了...还...",ex:"除了汉语，她还学英语",en:"Besides Chinese, she also studies English",note:"Besides...also"},
+],
+3:[
+  {p:"S + 把 + O + V + complement",ex:"我把行李放在这里",en:"I put the luggage here",note:"把 disposal construction"},
+  {p:"S + 被 + agent + V",ex:"我的钱包被偷了",en:"My wallet was stolen",note:"被 passive construction"},
+  {p:"不但...而且...",ex:"她不但会说中文，而且会写",en:"She not only speaks Chinese but also writes it",note:"Not only...but also"},
+  {p:"只有...才...",ex:"只有努力，才能成功",en:"Only by working hard can you succeed",note:"Only if...then"},
+  {p:"越来越 + Adj",ex:"我的中文越来越好",en:"My Chinese is getting better and better",note:"More and more"},
+  {p:"S + 对 + N + 感兴趣",ex:"我对中国文化感兴趣",en:"I'm interested in Chinese culture",note:"Expressing interest"},
+],
+4:[
+  {p:"S + 通过 + N + V",ex:"通过练习，我进步了很多",en:"Through practice, I improved a lot",note:"By means of / through"},
+  {p:"S + 随着 + N + V",ex:"随着技术发展，生活更方便",en:"As technology develops, life is more convenient",note:"As / along with"},
+  {p:"S + 对...来说",ex:"对我来说，学中文很重要",en:"For me, learning Chinese is important",note:"From someone's perspective"},
+  {p:"即使...也...",ex:"即使很难，我也要学",en:"Even if it's hard, I'll still learn",note:"Even if...still"},
+  {p:"S + 不得不 + V",ex:"我不得不提前离开",en:"I had no choice but to leave early",note:"Have no choice but to"},
+  {p:"尽管...还是...",ex:"尽管很贵，他还是买了",en:"Despite being expensive, he bought it",note:"Despite...still"},
+],
+5:[
+  {p:"由于...因此...",ex:"由于天气原因，航班取消了",en:"Due to weather, the flight was cancelled",note:"Due to...therefore"},
+  {p:"S + 宁可...也不...",ex:"宁可多走路，也不坐黑车",en:"I'd rather walk more than take an unlicensed taxi",note:"Would rather...than"},
+  {p:"S + 之所以...是因为...",ex:"他之所以成功，是因为努力",en:"The reason he succeeded is because of hard work",note:"The reason...is because"},
+  {p:"无论...都...",ex:"无论多忙，都要休息",en:"No matter how busy, you must still rest",note:"No matter...always"},
+  {p:"既然...就...",ex:"既然来了，就好好玩吧",en:"Since you're here, just enjoy yourself",note:"Since/now that...then"},
+  {p:"S + 不禁 + V",ex:"她不禁笑了起来",en:"She couldn't help but smile",note:"Can't help but..."},
+],
+};
+const HSK_LEVELS={
+  1:{name:"Beginner",zh:"初级",color:"#3E7C59",desc:"~150 words · Basic survival phrases and daily life",badge:"⭐"},
+  2:{name:"Elementary",zh:"基础",color:"#3A6B8A",desc:"~300 words total · Simple conversations and common situations",badge:"⭐⭐"},
+  3:{name:"Intermediate",zh:"中级",color:"#B98A2F",desc:"~600 words total · Everyday topics and travel",badge:"⭐⭐⭐"},
+  4:{name:"Upper-Intermediate",zh:"中高级",color:"#C8372D",desc:"~1200 words total · Fluent communication",badge:"⭐⭐⭐⭐"},
+  5:{name:"Advanced",zh:"高级",color:"#2B2722",desc:"~2500 words total · Near-native proficiency",badge:"⭐⭐⭐⭐⭐"},
+};
+
+// ── HSK view ──────────────────────────────────────────────────────────
+function HSKView({state,setState}){
+  const[level,setLevel]=useState(1);
+  const[subView,setSubView]=useState('vocab'); // vocab | grammar
+  const[session,setSession]=useState(null);
+  const info=HSK_LEVELS[level];
+  const words=HSK[level]||[];
+
+  // Compute progress for this level
+  const mastered=words.filter((_,i)=>state.cards[getHskId(level,i)]?.lvl>=4).length;
+  const started=words.filter((_,i)=>state.cards[getHskId(level,i)]).length;
+  const due=words.filter((_,i)=>{const c=state.cards[getHskId(level,i)];return c&&c.due<=todayStr();}).length;
+  const newWords=words.filter((_,i)=>!state.cards[getHskId(level,i)]);
+
+  const startStudy=()=>{
+    // mix due + up to newPerDay new words
+    const dueQ=words.map((_,i)=>getHskId(level,i)).filter(id=>{const c=state.cards[id];return c&&c.due<=todayStr();});
+    const newQ=words.map((_,i)=>getHskId(level,i)).filter(id=>!state.cards[id]).slice(0,Math.min(10,newWords.length));
+    const q=[...dueQ,...newQ];
+    if(q.length)setSession(q.sort(()=>Math.random()-0.5).map(id=>({id})));
+  };
+  const practiceAll=()=>setSession(words.map((_,i)=>({id:getHskId(level,i)})).sort(()=>Math.random()-0.5));
+
+  if(session&&session!=="done")return <ReviewSession queue={session} state={state} setState={setState} onDone={()=>setSession("done")}/>;
+
+  return(<div style={{display:"flex",flexDirection:"column",gap:14}}>
+    {/* Level tabs */}
+    <div style={{display:"flex",gap:6}}>
+      {[1,2,3,4,5].map(lv=>{
+        const inf=HSK_LEVELS[lv];
+        const wds=HSK[lv]||[];
+        const prog=Math.round((wds.filter((_,i)=>state.cards[getHskId(lv,i)]?.lvl>=4).length/wds.length)*100);
+        return <button key={lv} onClick={()=>setLevel(lv)} style={{flex:1,background:level===lv?inf.color:C.card,color:level===lv?"#FFF8EE":C.inkSoft,border:`1.5px solid ${level===lv?inf.color:C.line}`,borderRadius:10,padding:"8px 0",fontFamily:UI,fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+          <span>HSK{lv}</span>
+          <div style={{width:"80%",height:3,background:level===lv?"rgba(255,255,255,0.3)":C.line,borderRadius:2}}>
+            <div style={{height:"100%",background:level===lv?"rgba(255,255,255,0.9)":inf.color,borderRadius:2,width:prog+"%"}}/>
+          </div>
+        </button>;
+      })}
+    </div>
+
+    {/* Level card */}
+    <div style={{background:info.color,borderRadius:16,padding:"18px 18px 16px",color:"#FFF8EE"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div>
+          <div style={{fontFamily:HAN,fontWeight:900,fontSize:28,lineHeight:1}}>{info.zh}</div>
+          <div style={{fontFamily:UI,fontWeight:700,fontSize:15,opacity:0.9}}>{info.name}</div>
+          <div style={{fontFamily:UI,fontSize:12,opacity:0.7,marginTop:3}}>{info.desc}</div>
+        </div>
+        <div style={{fontFamily:UI,fontSize:26}}>{info.badge}</div>
+      </div>
+      <div style={{display:"flex",gap:14,marginTop:14}}>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontFamily:HAN,fontWeight:900,fontSize:22}}>{started}</div>
+          <div style={{fontFamily:UI,fontSize:10,opacity:0.8}}>started</div>
+        </div>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontFamily:HAN,fontWeight:900,fontSize:22}}>{mastered}</div>
+          <div style={{fontFamily:UI,fontSize:10,opacity:0.8}}>mastered</div>
+        </div>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontFamily:HAN,fontWeight:900,fontSize:22}}>{due}</div>
+          <div style={{fontFamily:UI,fontSize:10,opacity:0.8}}>due today</div>
+        </div>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontFamily:HAN,fontWeight:900,fontSize:22}}>{newWords.length}</div>
+          <div style={{fontFamily:UI,fontSize:10,opacity:0.8}}>new</div>
+        </div>
+      </div>
+      <div style={{height:5,background:"rgba(255,255,255,0.2)",borderRadius:3,marginTop:12}}>
+        <div style={{height:"100%",background:"rgba(255,255,255,0.9)",borderRadius:3,width:Math.round((mastered/words.length)*100)+"%",transition:"width 0.4s"}}/>
+      </div>
+      <div style={{fontFamily:UI,fontSize:11,opacity:0.7,marginTop:4}}>{mastered}/{words.length} mastered</div>
+    </div>
+
+    {session==="done"&&<div className="pop" style={{background:C.jade,color:"#FFF8EE",borderRadius:12,padding:14,fontFamily:UI,fontWeight:700,textAlign:"center"}}>🎉 Session complete! 很好!</div>}
+
+    {/* Study buttons */}
+    <div style={{display:"flex",gap:8}}>
+      <button onClick={startStudy} disabled={!due&&!newWords.length} style={{flex:1,background:C.vermilion,color:"#FFF8EE",border:"none",borderRadius:12,padding:"12px 0",fontFamily:UI,fontWeight:700,fontSize:14,cursor:"pointer",opacity:!due&&!newWords.length?0.45:1}}>
+        {due+newWords.length>0?`Study (${due+Math.min(10,newWords.length)} cards)`:"All up to date"}
+      </button>
+      <button onClick={practiceAll} style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:"12px 0",fontFamily:UI,fontWeight:700,fontSize:14,cursor:"pointer",color:C.ink}}>
+        Shuffle all {words.length}
+      </button>
+    </div>
+
+    {/* Sub-view toggle */}
+    <div style={{display:"flex",background:C.paper,borderRadius:10,padding:3,gap:3}}>
+      {["vocab","grammar"].map(v=><button key={v} onClick={()=>setSubView(v)} style={{flex:1,background:subView===v?C.card:"transparent",border:"none",borderRadius:8,padding:"8px 0",fontFamily:UI,fontWeight:700,fontSize:14,cursor:"pointer",color:subView===v?C.ink:C.inkSoft,boxShadow:subView===v?"0 1px 3px rgba(0,0,0,0.08)":"none"}}>{v==="vocab"?"📖 Vocabulary":"✏️ Grammar"}</button>)}
+    </div>
+
+    {/* Vocabulary list */}
+    {subView==="vocab"&&<div style={{display:"flex",flexDirection:"column",gap:6}}>
+      {words.map((w,i)=>{
+        const id=getHskId(level,i);
+        const prog=state.cards[id];
+        const lvlNum=prog?.lvl||0;
+        return <div key={i} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:11,padding:"10px 12px",display:"flex",alignItems:"center",gap:10}}>
+          <SpeakBtn chinese={w.c} pinyin={w.p}/>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:HAN,fontWeight:700,fontSize:19,color:C.ink,lineHeight:1.2}}>{w.c}
+              <span style={{fontFamily:UI,fontWeight:700,fontSize:13,color:C.vermilion,marginLeft:6}}>{w.p}</span>
+            </div>
+            <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>{w.e}</div>
+          </div>
+          {prog&&<div style={{width:32,height:32,borderRadius:"50%",background:lvlNum>=4?C.jade:lvlNum>=2?C.gold:C.paper,border:`1.5px solid ${lvlNum>=4?C.jade:lvlNum>=2?C.gold:C.line}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:UI,fontWeight:700,fontSize:11,color:lvlNum>=2?"#FFF8EE":C.inkSoft,flexShrink:0}}>
+            {lvlNum>=4?"记":lvlNum}
+          </div>}
+        </div>;
+      })}
+    </div>}
+
+    {/* Grammar patterns */}
+    {subView==="grammar"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
+      <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>Key grammar patterns at HSK {level} level</div>
+      {(HSK_GRAMMAR[level]||[]).map((g,i)=><div key={i} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:14}}>
+        <div style={{fontFamily:'monospace',fontWeight:700,fontSize:15,color:info.color,marginBottom:8}}>{g.p}</div>
+        <div style={{fontFamily:HAN,fontWeight:700,fontSize:17,color:C.ink}}>{g.ex}</div>
+        <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,marginTop:2}}>{g.en}</div>
+        <div style={{fontFamily:UI,fontSize:12,color:C.gold,marginTop:6,borderTop:`1px solid ${C.line}`,paddingTop:6}}>💡 {g.note}</div>
+      </div>)}
+    </div>}
+  </div>);
+}
+
 // ── App shell ─────────────────────────────────────────────────────────
 function App(){
   const[tab,setTab]=useState("today"),[state,setState]=useState(null);
   useEffect(()=>{setState(loadState());},[]);
   if(!state)return <div style={{minHeight:"100vh",background:C.paper,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:UI,color:C.inkSoft}}>Loading…</div>;
-  const tabs=[{id:"today",zh:"今",label:"Today"},{id:"decks",zh:"词",label:"Decks"},{id:"quiz",zh:"测",label:"Quiz"},{id:"speak",zh:"说",label:"Speak"},{id:"trans",zh:"译",label:"Trans"},{id:"book",zh:"册",label:"Phrases"}];
+  const tabs=[{id:"today",zh:"今",label:"Today"},{id:"decks",zh:"词",label:"Decks"},{id:"quiz",zh:"测",label:"Quiz"},{id:"speak",zh:"说",label:"Speak"},{id:"trans",zh:"译",label:"Trans"},{id:"book",zh:"册",label:"Phrases"},{id:"hsk",zh:"级",label:"HSK"}];
   return(<div style={{minHeight:"100vh",background:C.paper,display:"flex",flexDirection:"column"}}>
     <header style={{padding:"14px 18px 10px",display:"flex",alignItems:"center",gap:10,borderBottom:`1.5px solid ${C.line}`,background:C.card}}>
       <Seal char="学" size={36} rotate={-4}/>
@@ -1166,8 +1954,9 @@ function App(){
       {tab==="speak"&&<SpeakView/>}
       {tab==="trans"&&<TranslateView/>}
       {tab==="book"&&<PhrasebookView/>}
+      {tab==="hsk"&&<HSKView state={state} setState={setState}/>}
     </main>
-    <nav style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1.5px solid ${C.line}`,display:"flex",justifyContent:"space-around",padding:"6px 0 12px",zIndex:100}}>
+    <nav style={{position:"fixed",bottom:0,left:0,right:0,background:C.card,borderTop:`1.5px solid ${C.line}`,display:"flex",overflowX:"auto",padding:"6px 4px 12px",zIndex:100,WebkitOverflowScrolling:"touch"}}>
       {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:1,minWidth:52}}>
         <div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:tab===t.id?"#FFF8EE":C.inkSoft,background:tab===t.id?C.vermilion:"transparent",width:32,height:32,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",transform:tab===t.id?"rotate(-4deg)":"none",transition:'all 0.2s'}}>{t.zh}</div>
         <div style={{fontFamily:UI,fontSize:10,fontWeight:700,color:tab===t.id?C.ink:C.inkSoft}}>{t.label}</div>
