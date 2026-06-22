@@ -2,7 +2,7 @@
   "name": "mandarin-travel-app",
   "version": "1.0.0",
   "private": true,
-  "engines": { "node": "20.x" },
+  "engines": { "node": "22.x" },
   "scripts": {
     "build": "npx esbuild src/app.jsx --bundle --outfile=public/bundle.js --minify --target=es2017"
   },
