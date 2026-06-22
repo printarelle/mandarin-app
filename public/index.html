@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>路上中文 · Mandarin for the Road</title>
+<link href="https://fonts.font.im/css2?family=Noto+Serif+SC:wght@500;700;900&family=Karla:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+body{background:#F7F2E7;font-family:'Karla',sans-serif}
+button{cursor:pointer}
+@keyframes fall{0%{top:-60px;opacity:1;transform:rotate(0deg) scale(1)}100%{top:105vh;opacity:0;transform:rotate(720deg) scale(0.5)}}
+@keyframes pop{0%{transform:scale(0.5);opacity:0}60%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.pop{animation:pop 0.4s ease forwards}
+.slideUp{animation:slideUp 0.3s ease forwards}
+</style>
+</head>
+<body>
+<div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#6B6357;font-size:18px">Loading 路上中文...</div></div>
+<script src="/bundle.js"></script>
+</body>
+</html>

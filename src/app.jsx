@@ -1,0 +1,1953 @@
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+
+const {useState,useEffect,useRef,useCallback}=React;
+const C={paper:"#F7F2E7",card:"#FFFCF4",ink:"#2B2722",inkSoft:"#6B6357",vermilion:"#C8372D",vermilionDark:"#A02A22",jade:"#3E7C59",gold:"#B98A2F",line:"#E5DCC8",sky:"#3A6B8A"};
+const HAN="'Noto Serif SC',serif",UI="'Karla',sans-serif";
+
+// ── Storage ──────────────────────────────────────────────────────────
+const store={
+  get:k=>{try{const v=localStorage.getItem(k);return v?{value:v}:null;}catch(e){return null;}},
+  set:(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}}
+};
+
+// ── Phrase data ───────────────────────────────────────────────────────
+const INTERVALS=[0,1,3,7,14,30];
+const DECKS=[
+  {id:"ess",name:"Essentials",zh:"基础",icon:"💬"},
+  {id:"food",name:"Food & Spice",zh:"吃饭",icon:"🍜"},
+  {id:"trans",name:"Transport",zh:"交通",icon:"🚆"},
+  {id:"hotel",name:"Hotel",zh:"酒店",icon:"🏨"},
+  {id:"shop",name:"Shopping",zh:"买东西",icon:"🛍️"},
+  {id:"col",name:"Colors",zh:"颜色",icon:"🎨"},
+  {id:"verb",name:"Verbs",zh:"动词",icon:"⚡"},
+  {id:"build",name:"Sentence Builders",zh:"造句",icon:"🧱"},
+  {id:"daily",name:"Daily Life",zh:"日常",icon:"☀️"},
+  {id:"num",name:"Numbers",zh:"数字",icon:"🔢"},
+  {id:"cd",name:"Chengdu",zh:"成都",icon:"🐼"},
+  {id:"cq",name:"Chongqing",zh:"重庆",icon:"🌉"},
+  {id:"xa",name:"Xi'an",zh:"西安",icon:"⚔️"},
+  {id:"emg",name:"Emergencies",zh:"紧急",icon:"🚨"},
+];
+// approx = rough English sound-alike
+const PHRASES=[
+  // Essentials
+  {c:"你好",p:"nǐ hǎo",e:"Hello",d:"ess",approx:"nee how"},
+  {c:"谢谢",p:"xièxie",e:"Thank you",d:"ess",approx:"shyeh shyeh"},
+  {c:"不好意思",p:"bù hǎo yìsi",e:"Excuse me / sorry",d:"ess",approx:"boo how ee suh"},
+  {c:"请问",p:"qǐngwèn",e:"May I ask...",d:"ess",approx:"ching when"},
+  {c:"我听不懂",p:"wǒ tīng bù dǒng",e:"I don't understand",d:"ess",approx:"woh ting boo dong"},
+  {c:"请说慢一点",p:"qǐng shuō màn yìdiǎn",e:"Please speak slower",d:"ess",approx:"ching shwoh man ee dyen"},
+  {c:"你会说英语吗",p:"nǐ huì shuō yīngyǔ ma",e:"Do you speak English?",d:"ess"},
+  {c:"多少钱",p:"duōshao qián",e:"How much?",d:"ess",approx:"dwoh shao chyen"},
+  {c:"我要这个",p:"wǒ yào zhège",e:"I want this one",d:"ess",approx:"woh yow juh guh"},
+  {c:"厕所在哪里",p:"cèsuǒ zài nǎlǐ",e:"Where is the toilet?",d:"ess",approx:"tsuh swoh zye na lee"},
+  {c:"没关系",p:"méi guānxi",e:"No problem / it's fine",d:"ess",approx:"may gwan shee"},
+  {c:"对不起",p:"duìbuqǐ",e:"I'm sorry",d:"ess",approx:"dway boo chee"},
+  {c:"是",p:"shì",e:"Yes",d:"ess",approx:"shuh"},
+  {c:"不是",p:"bú shì",e:"No",d:"ess",approx:"boo shuh"},
+  {c:"好的",p:"hǎo de",e:"OK / sure",d:"ess",approx:"how duh"},
+  {c:"再见",p:"zàijiàn",e:"Goodbye",d:"ess",approx:"zye jyen"},
+  // Food
+  {c:"不要太辣",p:"bú yào tài là",e:"Not too spicy",d:"food",approx:"boo yow tie la"},
+  {c:"微辣",p:"wēi là",e:"Mild spice",d:"food",approx:"way la"},
+  {c:"中辣",p:"zhōng là",e:"Medium spice",d:"food",approx:"jong la"},
+  {c:"不辣",p:"bú là",e:"No spice",d:"food",approx:"boo la"},
+  {c:"麻",p:"má",e:"Numbing (Sichuan pepper)",d:"food",approx:"ma"},
+  {c:"火锅",p:"huǒguō",e:"Hotpot",d:"food",approx:"hwoh gwoh"},
+  {c:"鸳鸯锅",p:"yuānyāng guō",e:"Half-and-half hotpot",d:"food"},
+  {c:"串串",p:"chuànchuàn",e:"Skewers",d:"food",approx:"chwan chwan"},
+  {c:"担担面",p:"dàndàn miàn",e:"Dan dan noodles",d:"food",approx:"dan dan myen"},
+  {c:"小面",p:"xiǎomiàn",e:"Chongqing spicy noodles",d:"food",approx:"shyow myen"},
+  {c:"一份",p:"yí fèn",e:"One portion",d:"food",approx:"ee fun"},
+  {c:"买单",p:"mǎidān",e:"The bill please",d:"food",approx:"my dan"},
+  {c:"打包",p:"dǎbāo",e:"Takeaway / to go",d:"food",approx:"da bow"},
+  {c:"我不吃肉",p:"wǒ bù chī ròu",e:"I don't eat meat",d:"food"},
+  {c:"好吃",p:"hǎochī",e:"Delicious",d:"food",approx:"how chuh"},
+  {c:"来一瓶水",p:"lái yì píng shuǐ",e:"A bottle of water please",d:"food",approx:"lie ee ping shway"},
+  {c:"服务员",p:"fúwùyuán",e:"Waiter!",d:"food",approx:"foo woo ywan"},
+  {c:"菜单",p:"càidān",e:"Menu",d:"food",approx:"tsye dan"},
+  {c:"我对花生过敏",p:"wǒ duì huāshēng guòmǐn",e:"I'm allergic to peanuts",d:"food"},
+  // Transport
+  {c:"我要去",p:"wǒ yào qù",e:"I want to go to...",d:"trans",approx:"woh yow choo"},
+  {c:"请在这里停",p:"qǐng zài zhèlǐ tíng",e:"Please stop here",d:"trans"},
+  {c:"地铁站在哪里",p:"dìtiě zhàn zài nǎlǐ",e:"Where is the metro?",d:"trans"},
+  {c:"高铁",p:"gāotiě",e:"High-speed rail",d:"trans",approx:"gow tyeh"},
+  {c:"火车站",p:"huǒchē zhàn",e:"Train station",d:"trans",approx:"hwoh chuh jan"},
+  {c:"机场",p:"jīchǎng",e:"Airport",d:"trans",approx:"jee chang"},
+  {c:"一张去西安的票",p:"yì zhāng qù Xī'ān de piào",e:"One ticket to Xi'an",d:"trans"},
+  {c:"几点出发",p:"jǐ diǎn chūfā",e:"What time does it leave?",d:"trans"},
+  {c:"出口",p:"chūkǒu",e:"Exit",d:"trans",approx:"choo koh"},
+  {c:"入口",p:"rùkǒu",e:"Entrance",d:"trans",approx:"roo koh"},
+  {c:"我在这里等你",p:"wǒ zài zhèlǐ děng nǐ",e:"Waiting here for you",d:"trans"},
+  {c:"左转",p:"zuǒ zhuǎn",e:"Turn left",d:"trans",approx:"zwoh jwan"},
+  {c:"右转",p:"yòu zhuǎn",e:"Turn right",d:"trans",approx:"yo jwan"},
+  {c:"直走",p:"zhí zǒu",e:"Go straight",d:"trans",approx:"juh zoh"},
+  // Hotel
+  {c:"我有预订",p:"wǒ yǒu yùdìng",e:"I have a reservation",d:"hotel"},
+  {c:"护照",p:"hùzhào",e:"Passport",d:"hotel",approx:"hoo jow"},
+  {c:"退房",p:"tuìfáng",e:"Check out",d:"hotel",approx:"tway fang"},
+  {c:"行李寄存",p:"xíngli jìcún",e:"Luggage storage",d:"hotel"},
+  {c:"WiFi密码是什么",p:"WiFi mìmǎ shì shénme",e:"What's the WiFi password?",d:"hotel"},
+  {c:"几楼",p:"jǐ lóu",e:"Which floor?",d:"hotel",approx:"jee loh"},
+  {c:"空调",p:"kōngtiáo",e:"Air conditioning",d:"hotel",approx:"kong tyow"},
+  {c:"毛巾",p:"máojīn",e:"Towel",d:"hotel",approx:"mow jin"},
+  {c:"叫醒服务",p:"jiàoxǐng fúwù",e:"Wake-up call",d:"hotel"},
+  // Shopping
+  {c:"可以便宜一点吗",p:"kěyǐ piányi yìdiǎn ma",e:"Can you make it cheaper?",d:"shop"},
+  {c:"太贵了",p:"tài guì le",e:"Too expensive",d:"shop",approx:"tie gway luh"},
+  {c:"可以用支付宝吗",p:"kěyǐ yòng Zhīfùbǎo ma",e:"Can I use Alipay?",d:"shop"},
+  {c:"可以刷卡吗",p:"kěyǐ shuākǎ ma",e:"Can I pay by card?",d:"shop"},
+  {c:"我看看",p:"wǒ kànkan",e:"Just looking",d:"shop",approx:"woh kan kan"},
+  {c:"有没有别的颜色",p:"yǒu méiyǒu bié de yánsè",e:"Do you have other colours?",d:"shop"},
+  {c:"我要黑色的",p:"wǒ yào hēisè de",e:"I want the black one",d:"shop"},
+  {c:"有没有大一点的",p:"yǒu méiyǒu dà yìdiǎn de",e:"Do you have a bigger one?",d:"shop"},
+  {c:"打折吗",p:"dǎzhé ma",e:"Is there a discount?",d:"shop",approx:"da juh ma"},
+  // Colors
+  {c:"黑色",p:"hēisè",e:"Black",d:"col",approx:"hay suh"},
+  {c:"白色",p:"báisè",e:"White",d:"col",approx:"bye suh"},
+  {c:"红色",p:"hóngsè",e:"Red",d:"col",approx:"hong suh"},
+  {c:"蓝色",p:"lánsè",e:"Blue",d:"col",approx:"lan suh"},
+  {c:"绿色",p:"lǜsè",e:"Green",d:"col",approx:"lyoo suh"},
+  {c:"黄色",p:"huángsè",e:"Yellow",d:"col",approx:"hwang suh"},
+  {c:"粉色",p:"fěnsè",e:"Pink",d:"col",approx:"fun suh"},
+  {c:"紫色",p:"zǐsè",e:"Purple",d:"col",approx:"zuh suh"},
+  {c:"橙色",p:"chéngsè",e:"Orange",d:"col",approx:"chung suh"},
+  {c:"灰色",p:"huīsè",e:"Grey",d:"col",approx:"hway suh"},
+  // Verbs
+  {c:"要",p:"yào",e:"Want / need",d:"verb",approx:"yow"},
+  {c:"去",p:"qù",e:"Go",d:"verb",approx:"choo"},
+  {c:"来",p:"lái",e:"Come",d:"verb",approx:"lie"},
+  {c:"吃",p:"chī",e:"Eat",d:"verb",approx:"chuh"},
+  {c:"喝",p:"hē",e:"Drink",d:"verb",approx:"huh"},
+  {c:"看",p:"kàn",e:"Look / watch",d:"verb",approx:"kan"},
+  {c:"喜欢",p:"xǐhuān",e:"Like",d:"verb",approx:"shee hwan"},
+  {c:"有",p:"yǒu",e:"Have",d:"verb",approx:"yo"},
+  {c:"没有",p:"méiyǒu",e:"Don't have",d:"verb",approx:"may yo"},
+  {c:"知道",p:"zhīdào",e:"Know",d:"verb",approx:"juh dow"},
+  {c:"不知道",p:"bù zhīdào",e:"Don't know",d:"verb",approx:"boo juh dow"},
+  {c:"明白",p:"míngbái",e:"Understand",d:"verb",approx:"ming bye"},
+  {c:"可以",p:"kěyǐ",e:"Can / may",d:"verb",approx:"kuh ee"},
+  {c:"帮我",p:"bāng wǒ",e:"Help me",d:"verb",approx:"bang woh"},
+  {c:"给我",p:"gěi wǒ",e:"Give me",d:"verb",approx:"gay woh"},
+  {c:"带我去",p:"dài wǒ qù",e:"Take me to",d:"verb"},
+  // Sentence builders
+  {c:"我想要",p:"wǒ xiǎng yào",e:"I want / I'd like",d:"build",approx:"woh shyang yow"},
+  {c:"你有...吗",p:"nǐ yǒu...ma",e:"Do you have...?",d:"build",approx:"nee yo...ma"},
+  {c:"这个多少钱",p:"zhège duōshao qián",e:"How much is this?",d:"build"},
+  {c:"太大了",p:"tài dà le",e:"Too big",d:"build",approx:"tie da luh"},
+  {c:"太小了",p:"tài xiǎo le",e:"Too small",d:"build",approx:"tie shyow luh"},
+  {c:"我不喜欢",p:"wǒ bù xǐhuān",e:"I don't like it",d:"build"},
+  {c:"我喜欢这个",p:"wǒ xǐhuān zhège",e:"I like this one",d:"build"},
+  {c:"在哪里",p:"zài nǎlǐ",e:"Where is it?",d:"build",approx:"zye na lee"},
+  {c:"怎么走",p:"zěnme zǒu",e:"How do I get there?",d:"build",approx:"zen muh zoh"},
+  {c:"能帮我吗",p:"néng bāng wǒ ma",e:"Can you help me?",d:"build"},
+  {c:"我要这个颜色",p:"wǒ yào zhège yánsè",e:"I want this colour",d:"build"},
+  {c:"有没有...的",p:"yǒu méiyǒu...de",e:"Do you have...?",d:"build"},
+  // Daily life
+  {c:"几点了",p:"jǐ diǎn le",e:"What time is it?",d:"daily",approx:"jee dyen luh"},
+  {c:"今天",p:"jīntiān",e:"Today",d:"daily",approx:"jin tyen"},
+  {c:"明天",p:"míngtiān",e:"Tomorrow",d:"daily",approx:"ming tyen"},
+  {c:"昨天",p:"zuótiān",e:"Yesterday",d:"daily",approx:"zwoh tyen"},
+  {c:"热",p:"rè",e:"Hot",d:"daily",approx:"ruh"},
+  {c:"冷",p:"lěng",e:"Cold",d:"daily",approx:"lung"},
+  {c:"大",p:"dà",e:"Big",d:"daily",approx:"da"},
+  {c:"小",p:"xiǎo",e:"Small",d:"daily",approx:"shyow"},
+  {c:"好看",p:"hǎokàn",e:"Beautiful / nice-looking",d:"daily",approx:"how kan"},
+  {c:"太好了",p:"tài hǎo le",e:"That's great!",d:"daily",approx:"tie how luh"},
+  {c:"没问题",p:"méi wèntí",e:"No problem",d:"daily",approx:"may one tee"},
+  {c:"等一下",p:"děng yīxià",e:"Wait a moment",d:"daily",approx:"dung ee shya"},
+  {c:"一起去",p:"yīqǐ qù",e:"Let's go together",d:"daily",approx:"ee chee choo"},
+  {c:"累了",p:"lèi le",e:"Tired",d:"daily",approx:"lay luh"},
+  {c:"饿了",p:"è le",e:"Hungry",d:"daily",approx:"uh luh"},
+  // Numbers
+  {c:"一",p:"yī",e:"1",d:"num",approx:"ee"},{c:"二",p:"èr",e:"2",d:"num",approx:"ar"},{c:"三",p:"sān",e:"3",d:"num",approx:"san"},
+  {c:"四",p:"sì",e:"4",d:"num",approx:"suh"},{c:"五",p:"wǔ",e:"5",d:"num",approx:"woo"},{c:"六",p:"liù",e:"6",d:"num",approx:"lyo"},
+  {c:"七",p:"qī",e:"7",d:"num",approx:"chee"},{c:"八",p:"bā",e:"8",d:"num",approx:"ba"},{c:"九",p:"jiǔ",e:"9",d:"num",approx:"jyo"},
+  {c:"十",p:"shí",e:"10",d:"num",approx:"shuh"},{c:"百",p:"bǎi",e:"Hundred",d:"num",approx:"bye"},{c:"千",p:"qiān",e:"Thousand",d:"num",approx:"chyen"},
+  {c:"二十五",p:"èrshíwǔ",e:"25",d:"num"},{c:"五十",p:"wǔshí",e:"50",d:"num"},{c:"一百",p:"yībǎi",e:"100",d:"num"},
+  // Chengdu
+  {c:"熊猫基地",p:"xióngmāo jīdì",e:"Panda Research Base",d:"cd"},{c:"宽窄巷子",p:"Kuānzhǎi Xiàngzi",e:"Kuanzhai Alley",d:"cd"},
+  {c:"茶馆",p:"cháguǎn",e:"Teahouse",d:"cd",approx:"cha gwan"},{c:"人民公园",p:"Rénmín Gōngyuán",e:"People's Park",d:"cd"},
+  {c:"青城山",p:"Qīngchéng Shān",e:"Qingcheng Mountain",d:"cd"},{c:"锦里",p:"Jǐnlǐ",e:"Jinli Ancient Street",d:"cd"},
+  // Chongqing
+  {c:"洪崖洞",p:"Hóngyádòng",e:"Hongya Cave",d:"cq"},{c:"长江索道",p:"Chángjiāng suǒdào",e:"Yangtze cable car",d:"cq"},
+  {c:"轻轨",p:"qīngguǐ",e:"Light rail (through the building!)",d:"cq"},{c:"解放碑",p:"Jiěfàngbēi",e:"Jiefangbei downtown",d:"cq"},
+  {c:"磁器口",p:"Cíqìkǒu",e:"Ciqikou old town",d:"cq"},
+  // Xi'an
+  {c:"兵马俑",p:"bīngmǎyǒng",e:"Terracotta Warriors",d:"xa"},{c:"回民街",p:"Huímín Jiē",e:"Muslim Quarter",d:"xa"},
+  {c:"肉夹馍",p:"ròujiāmó",e:"Xi'an meat sandwich",d:"xa",approx:"roh jya moh"},{c:"城墙",p:"chéngqiáng",e:"City wall",d:"xa",approx:"chung chyang"},
+  {c:"凉皮",p:"liángpí",e:"Cold skin noodles",d:"xa",approx:"lyang pee"},{c:"大雁塔",p:"Dàyàn Tǎ",e:"Big Wild Goose Pagoda",d:"xa"},
+  // Emergencies
+  {c:"救命",p:"jiùmìng",e:"Help!",d:"emg",approx:"jyo ming"},{c:"我需要医生",p:"wǒ xūyào yīshēng",e:"I need a doctor",d:"emg"},
+  {c:"警察",p:"jǐngchá",e:"Police",d:"emg",approx:"jing cha"},{c:"我迷路了",p:"wǒ mílù le",e:"I'm lost",d:"emg"},
+  {c:"我的护照丢了",p:"wǒ de hùzhào diū le",e:"I've lost my passport",d:"emg"},{c:"请叫救护车",p:"qǐng jiào jiùhùchē",e:"Please call an ambulance",d:"emg"},
+];
+const TONE_ITEMS=[
+  {c:"妈",p:"mā",t:1},{c:"麻",p:"má",t:2},{c:"马",p:"mǎ",t:3},{c:"骂",p:"mà",t:4},
+  {c:"汤",p:"tāng",t:1},{c:"糖",p:"táng",t:2},{c:"躺",p:"tǎng",t:3},{c:"烫",p:"tàng",t:4},
+  {c:"八",p:"bā",t:1},{c:"拔",p:"bá",t:2},{c:"把",p:"bǎ",t:3},{c:"爸",p:"bà",t:4},
+  {c:"吃",p:"chī",t:1},{c:"茶",p:"chá",t:2},{c:"你",p:"nǐ",t:3},{c:"是",p:"shì",t:4},
+  {c:"天",p:"tiān",t:1},{c:"钱",p:"qián",t:2},{c:"买",p:"mǎi",t:3},{c:"卖",p:"mài",t:4},
+  {c:"高",p:"gāo",t:1},{c:"来",p:"lái",t:2},{c:"可",p:"kě",t:3},{c:"去",p:"qù",t:4},
+];
+
+// ── Phrasebook data (offline, no API) ────────────────────────────────
+const BOOK_SECTIONS=[
+  {id:"all",name:"All",icon:"📖"},{id:"emg",name:"Emergency",icon:"🚨"},
+  {id:"food",name:"Restaurant",icon:"🍜"},{id:"move",name:"Getting Around",icon:"🚕"},
+  {id:"shop",name:"Shopping",icon:"🛍️"},{id:"hotel",name:"Hotel",icon:"🏨"},
+  {id:"med",name:"Medical",icon:"💊"},{id:"social",name:"Social",icon:"💬"},
+  {id:"tech",name:"Tech & Misc",icon:"📱"},
+];
+const BOOK=[
+  // Emergency
+  {c:"救命！",p:"jiùmìng!",e:"Help!",s:"emg"},{c:"警察",p:"jǐngchá",e:"Police",s:"emg"},
+  {c:"我需要医生",p:"wǒ xūyào yīshēng",e:"I need a doctor",s:"emg"},
+  {c:"请叫救护车",p:"qǐng jiào jiùhùchē",e:"Please call an ambulance",s:"emg"},
+  {c:"我迷路了",p:"wǒ mílù le",e:"I'm lost",s:"emg"},
+  {c:"我的护照丢了",p:"wǒ de hùzhào diū le",e:"I've lost my passport",s:"emg"},
+  {c:"我的手机被偷了",p:"wǒ de shǒujī bèi tōu le",e:"My phone was stolen",s:"emg"},
+  {c:"我需要去医院",p:"wǒ xūyào qù yīyuàn",e:"I need to go to hospital",s:"emg"},
+  {c:"我对...过敏",p:"wǒ duì...guòmǐn",e:"I'm allergic to...",s:"emg"},
+  {c:"这里很痛",p:"zhèlǐ hěn tòng",e:"It hurts here",s:"emg"},
+  {c:"我不舒服",p:"wǒ bù shūfu",e:"I feel unwell",s:"emg"},
+  {c:"请帮我",p:"qǐng bāng wǒ",e:"Please help me",s:"emg"},
+  // Restaurant & Food
+  {c:"你好，两位",p:"nǐ hǎo, liǎng wèi",e:"Hello, table for two",s:"food"},
+  {c:"有英文菜单吗",p:"yǒu yīngwén càidān ma",e:"Do you have an English menu?",s:"food"},
+  {c:"我要点餐",p:"wǒ yào diǎncān",e:"I'd like to order",s:"food"},
+  {c:"这个是什么",p:"zhège shì shénme",e:"What is this?",s:"food"},
+  {c:"推荐什么",p:"tuījiàn shénme",e:"What do you recommend?",s:"food"},
+  {c:"不要太辣",p:"bú yào tài là",e:"Not too spicy",s:"food"},
+  {c:"不辣",p:"bú là",e:"No spice please",s:"food"},
+  {c:"我吃素",p:"wǒ chī sù",e:"I'm vegetarian",s:"food"},
+  {c:"我不吃肉",p:"wǒ bù chī ròu",e:"I don't eat meat",s:"food"},
+  {c:"不要味精",p:"bú yào wèijīng",e:"No MSG please",s:"food"},
+  {c:"有花生吗",p:"yǒu huāshēng ma",e:"Does this contain peanuts?",s:"food"},
+  {c:"来一瓶水",p:"lái yì píng shuǐ",e:"A bottle of water please",s:"food"},
+  {c:"再来一份",p:"zài lái yī fèn",e:"One more of this please",s:"food"},
+  {c:"买单",p:"mǎidān",e:"Bill please",s:"food"},
+  {c:"可以打包吗",p:"kěyǐ dǎbāo ma",e:"Can I get this to go?",s:"food"},
+  {c:"好吃！谢谢",p:"hǎochī! xièxie",e:"Delicious! Thank you",s:"food"},
+  // Getting around
+  {c:"请送我去这里",p:"qǐng sòng wǒ qù zhèlǐ",e:"Please take me here (show phone)",s:"move"},
+  {c:"请在这里停",p:"qǐng zài zhèlǐ tíng",e:"Please stop here",s:"move"},
+  {c:"多少钱",p:"duōshao qián",e:"How much?",s:"move"},
+  {c:"太贵了",p:"tài guì le",e:"Too expensive",s:"move"},
+  {c:"能便宜吗",p:"néng piányi ma",e:"Can you lower the price?",s:"move"},
+  {c:"地铁站在哪里",p:"dìtiě zhàn zài nǎlǐ",e:"Where is the metro?",s:"move"},
+  {c:"怎么去...",p:"zěnme qù...",e:"How do I get to...?",s:"move"},
+  {c:"左转",p:"zuǒ zhuǎn",e:"Turn left",s:"move"},
+  {c:"右转",p:"yòu zhuǎn",e:"Turn right",s:"move"},
+  {c:"直走",p:"zhí zǒu",e:"Go straight",s:"move"},
+  {c:"这里",p:"zhèlǐ",e:"Here",s:"move"},
+  {c:"那里",p:"nàlǐ",e:"There",s:"move"},
+  {c:"多远",p:"duō yuǎn",e:"How far?",s:"move"},
+  {c:"几分钟",p:"jǐ fēnzhōng",e:"How many minutes?",s:"move"},
+  {c:"走路还是坐车",p:"zǒulù háishi zuòchē",e:"Walk or take transport?",s:"move"},
+  {c:"出口在哪里",p:"chūkǒu zài nǎlǐ",e:"Where is the exit?",s:"move"},
+  // Shopping
+  {c:"这个多少钱",p:"zhège duōshao qián",e:"How much is this?",s:"shop"},
+  {c:"有没有别的颜色",p:"yǒu méiyǒu bié de yánsè",e:"Other colours available?",s:"shop"},
+  {c:"有没有大一点的",p:"yǒu méiyǒu dà yìdiǎn de",e:"A bigger size?",s:"shop"},
+  {c:"有没有小一点的",p:"yǒu méiyǒu xiǎo yìdiǎn de",e:"A smaller size?",s:"shop"},
+  {c:"我要这个颜色",p:"wǒ yào zhège yánsè",e:"I want this colour",s:"shop"},
+  {c:"可以试一试吗",p:"kěyǐ shì yī shì ma",e:"Can I try it?",s:"shop"},
+  {c:"打折吗",p:"dǎzhé ma",e:"Is there a discount?",s:"shop"},
+  {c:"再便宜一点",p:"zài piányi yìdiǎn",e:"A bit cheaper please",s:"shop"},
+  {c:"我不要了，谢谢",p:"wǒ bú yào le, xièxie",e:"No thanks, I don't want it",s:"shop"},
+  {c:"可以用支付宝吗",p:"kěyǐ yòng Zhīfùbǎo ma",e:"Can I use Alipay?",s:"shop"},
+  {c:"可以刷卡吗",p:"kěyǐ shuākǎ ma",e:"Can I pay by card?",s:"shop"},
+  {c:"我需要发票",p:"wǒ xūyào fāpiào",e:"I need a receipt",s:"shop"},
+  // Hotel
+  {c:"我有预订",p:"wǒ yǒu yùdìng",e:"I have a reservation",s:"hotel"},
+  {c:"我的姓名是...",p:"wǒ de xìngmíng shì...",e:"My name is...",s:"hotel"},
+  {c:"能早点入住吗",p:"néng zǎodiǎn rùzhù ma",e:"Can I check in early?",s:"hotel"},
+  {c:"能晚点退房吗",p:"néng wǎndiǎn tuìfáng ma",e:"Can I check out late?",s:"hotel"},
+  {c:"WiFi密码是什么",p:"WiFi mìmǎ shì shénme",e:"What's the WiFi password?",s:"hotel"},
+  {c:"空调坏了",p:"kōngtiáo huài le",e:"The air conditioning is broken",s:"hotel"},
+  {c:"能换一个房间吗",p:"néng huàn yīgè fángjiān ma",e:"Can I change rooms?",s:"hotel"},
+  {c:"行李可以寄存吗",p:"xíngli kěyǐ jìcún ma",e:"Can I store my luggage?",s:"hotel"},
+  {c:"附近有便利店吗",p:"fùjìn yǒu biànlìdiàn ma",e:"Is there a convenience store nearby?",s:"hotel"},
+  {c:"叫醒服务，早上七点",p:"jiàoxǐng fúwù, zǎoshang qī diǎn",e:"Wake-up call at 7am please",s:"hotel"},
+  // Medical
+  {c:"我头疼",p:"wǒ tóuténg",e:"I have a headache",s:"med"},
+  {c:"我肚子疼",p:"wǒ dùzi téng",e:"I have a stomach ache",s:"med"},
+  {c:"我发烧了",p:"wǒ fāshāo le",e:"I have a fever",s:"med"},
+  {c:"我需要止疼药",p:"wǒ xūyào zhǐ téng yào",e:"I need pain killers",s:"med"},
+  {c:"最近的药店在哪里",p:"zuìjìn de yàodiàn zài nǎlǐ",e:"Where is the nearest pharmacy?",s:"med"},
+  {c:"我对青霉素过敏",p:"wǒ duì qīngméisù guòmǐn",e:"I'm allergic to penicillin",s:"med"},
+  {c:"我需要看医生",p:"wǒ xūyào kàn yīshēng",e:"I need to see a doctor",s:"med"},
+  {c:"请写下来",p:"qǐng xiě xià lái",e:"Please write it down",s:"med"},
+  // Social
+  {c:"你好",p:"nǐ hǎo",e:"Hello",s:"social"},{c:"谢谢",p:"xièxie",e:"Thank you",s:"social"},
+  {c:"不客气",p:"bú kèqi",e:"You're welcome",s:"social"},
+  {c:"对不起",p:"duìbuqǐ",e:"Sorry",s:"social"},
+  {c:"没关系",p:"méi guānxi",e:"No worries",s:"social"},
+  {c:"我是爱尔兰人",p:"wǒ shì Ài'ěrlán rén",e:"I'm Irish",s:"social"},
+  {c:"我在学中文",p:"wǒ zài xué Zhōngwén",e:"I'm learning Chinese",s:"social"},
+  {c:"你说得很慢可以吗",p:"nǐ shuō de hěn màn kěyǐ ma",e:"Can you speak slowly please?",s:"social"},
+  {c:"我听不懂",p:"wǒ tīng bù dǒng",e:"I don't understand",s:"social"},
+  {c:"请再说一遍",p:"qǐng zài shuō yībiàn",e:"Please say that again",s:"social"},
+  {c:"能写下来吗",p:"néng xiě xià lái ma",e:"Can you write it down?",s:"social"},
+  {c:"可以拍照吗",p:"kěyǐ pāizhào ma",e:"Can I take a photo?",s:"social"},
+  {c:"和你合照可以吗",p:"hé nǐ hézhào kěyǐ ma",e:"Can I take a photo with you?",s:"social"},
+  {c:"再见",p:"zàijiàn",e:"Goodbye",s:"social"},
+  {c:"祝你愉快",p:"zhù nǐ yúkuài",e:"Have a great day",s:"social"},
+  // Tech & Misc
+  {c:"有充电器吗",p:"yǒu chōngdiànqì ma",e:"Do you have a charger?",s:"tech"},
+  {c:"我需要充电",p:"wǒ xūyào chōngdiàn",e:"I need to charge my phone",s:"tech"},
+  {c:"有插座吗",p:"yǒu chāzuò ma",e:"Is there a power socket?",s:"tech"},
+  {c:"WiFi有吗",p:"WiFi yǒu ma",e:"Is there WiFi?",s:"tech"},
+  {c:"信号不好",p:"xìnhào bù hǎo",e:"The signal is bad",s:"tech"},
+  {c:"要收费吗",p:"yào shōufèi ma",e:"Is there a fee?",s:"tech"},
+  {c:"几点关门",p:"jǐ diǎn guānmén",e:"What time do you close?",s:"tech"},
+  {c:"几点开门",p:"jǐ diǎn kāimén",e:"What time do you open?",s:"tech"},
+  {c:"有洗手间吗",p:"yǒu xǐshǒujiān ma",e:"Is there a bathroom?",s:"tech"},
+  {c:"禁止拍照",p:"jìnzhǐ pāizhào",e:"No photography (sign)",s:"tech"},
+  {c:"请勿打扰",p:"qǐng wù dǎrǎo",e:"Do not disturb (sign)",s:"tech"},
+];
+const SCENARIOS=[
+  {id:"hotpot",name:"Hotpot restaurant",zh:"火锅店",role:"a friendly waiter in a Chengdu hotpot restaurant. Help the customer order, choose spice levels, and understand the menu"},
+  {id:"taxi",name:"Didi driver",zh:"出租车",role:"a chatty Didi taxi driver in Chongqing. Help confirm the destination and make friendly small talk"},
+  {id:"hotel",name:"Hotel check-in",zh:"酒店",role:"a helpful hotel receptionist in Xi'an. The guest is checking in and needs assistance"},
+  {id:"market",name:"Market bargaining",zh:"市场",role:"a friendly souvenir stall owner at Xi'an's Muslim Quarter. Engage in friendly price bargaining"},
+  {id:"train",name:"Train station",zh:"车站",role:"a helpful ticket clerk at Chengdu East railway station. Help the traveller buy a high-speed rail ticket to Xi'an"},
+  {id:"teahouse",name:"Chengdu teahouse",zh:"茶馆",role:"a relaxed teahouse host in Chengdu's People's Park. Help the customer choose and order tea"},
+  {id:"restaurant",name:"Local restaurant",zh:"餐厅",role:"a friendly local restaurant owner in Xi'an near the Muslim Quarter. Help the customer order food from the menu"},
+];
+
+// ── Helpers ───────────────────────────────────────────────────────────
+const todayStr=()=>new Date().toISOString().slice(0,10);
+const daysBetween=(a,b)=>Math.round((new Date(b)-new Date(a))/86400000);
+const last7Days=()=>Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-6+i);return d.toISOString().slice(0,10);});
+
+// ── Web Audio ─────────────────────────────────────────────────────────
+const TC={'ā':1,'á':2,'ǎ':3,'à':4,'ē':1,'é':2,'ě':3,'è':4,'ī':1,'í':2,'ǐ':3,'ì':4,'ō':1,'ó':2,'ǒ':3,'ò':4,'ū':1,'ú':2,'ǔ':3,'ù':4,'ǖ':1,'ǘ':2,'ǚ':3,'ǜ':4};
+function parseTones(py){return py.trim().split(/\s+/).map(s=>{for(const[ch,t] of Object.entries(TC))if(s.includes(ch))return t;return 0;});}
+let _ac=null;
+function getAC(){const Ctor=window.AudioContext||window.webkitAudioContext;if(!_ac||_ac.state==='closed')_ac=new Ctor();return _ac;}
+function toneShape(tone,off,dur){
+  const ctx=getAC();if(ctx.state==='suspended')ctx.resume();
+  const osc=ctx.createOscillator(),g=ctx.createGain();
+  osc.type='sine';osc.connect(g);g.connect(ctx.destination);
+  const[H,MH,M,L]=[320,265,210,160],t0=ctx.currentTime+off;
+  g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(0.18,t0+0.04);
+  g.gain.setValueAtTime(0.18,t0+dur-0.07);g.gain.linearRampToValueAtTime(0,t0+dur);
+  switch(tone){
+    case 1:osc.frequency.setValueAtTime(H,t0);break;
+    case 2:osc.frequency.setValueAtTime(M,t0);osc.frequency.exponentialRampToValueAtTime(H,t0+dur);break;
+    case 3:osc.frequency.setValueAtTime(MH,t0);osc.frequency.exponentialRampToValueAtTime(L,t0+dur*0.55);osc.frequency.exponentialRampToValueAtTime(MH,t0+dur);break;
+    case 4:osc.frequency.setValueAtTime(H,t0);osc.frequency.exponentialRampToValueAtTime(L,t0+dur);break;
+    default:osc.frequency.setValueAtTime(M,t0);
+  }
+  osc.start(t0);osc.stop(t0+dur+0.02);
+}
+function toneSound(py){parseTones(py).forEach((t,i)=>toneShape(t,i*0.38,0.32));}
+// FIX: getAC() called SYNCHRONOUSLY before any await — AudioContext must be
+// in 'running' state before the async fetch chain begins
+async function speak(chinese,pinyin){
+  const ctx=getAC(); // ← sync, captures gesture context
+  try{ctx.resume();}catch(e){}
+  try{
+    const res=await fetch('/api/tts?text='+encodeURIComponent(chinese));
+    if(!res.ok)throw new Error();
+    const buf=await res.arrayBuffer();
+    const audio=await new Promise((res,rej)=>ctx.decodeAudioData(buf,res,rej));
+    const src=ctx.createBufferSource();
+    src.buffer=audio;src.connect(ctx.destination);src.start(0);
+    return;
+  }catch(e){}
+  if(pinyin)toneSound(pinyin);
+}
+// Speak any language via the TTS proxy (lang defaults to zh-CN)
+async function speakLang(text, lang='zh-CN', pinyin=null){
+  const ctx=getAC();
+  try{ctx.resume();}catch(e){}
+  try{
+    const res=await fetch(`/api/tts?text=${encodeURIComponent(text)}&lang=${lang}`);
+    if(!res.ok)throw new Error();
+    const buf=await res.arrayBuffer();
+    const audio=await new Promise((resolve,rej)=>ctx.decodeAudioData(buf,resolve,rej));
+    const src=ctx.createBufferSource();
+    src.buffer=audio;src.connect(ctx.destination);src.start(0);
+    return;
+  }catch(e){}
+  // Chinese fallback only — tone synthesis
+  if(lang==='zh-CN'&&pinyin)toneSound(pinyin);
+}
+// Unlock on first touch
+document.addEventListener('touchstart',()=>{try{getAC().resume();}catch(e){}},{once:true,passive:true});
+
+// ── State ─────────────────────────────────────────────────────────────
+const DEF={cards:{},streak:0,lastStudy:null,studyHistory:{},reviewsToday:0,reviewsDate:null,newPerDay:8,quizBest:0,toneBest:0,totalReviews:0,todaysCards:[],customSets:[],phraseCounter:10000};
+// Phrase lookup — built-ins by array index, custom by stable ID
+function getPhrase(state,id){
+  if(id<PHRASES.length)return PHRASES[id];
+  for(const set of(state.customSets||[])){const p=set.phrases.find(p=>p.id===id);if(p)return p;}
+  const hw=getHskWord(id);if(hw)return hw;
+  return null;
+}
+function getAllPhraseIds(state){
+  const custom=(state.customSets||[]).flatMap(s=>s.phrases.map(p=>p.id));
+  const hskStudied=Object.keys(state.cards).map(Number).filter(id=>id>=20000);
+  return[...PHRASES.map((_,i)=>i),...custom,...hskStudied];
+}
+function loadState(){
+  try{
+    const r=store.get('mand2');
+    if(r?.value){
+      const d=JSON.parse(r.value);
+      // migrate old flat customPhrases array to customSets
+      if(d.customPhrases?.length&&!d.customSets?.length){
+        const phrases=d.customPhrases.map((p,i)=>({...p,id:10000+i,d:'prev'}));
+        d.customSets=[{id:'prev',topic:'Previous phrases',phrases}];
+        d.phraseCounter=10000+phrases.length;
+        delete d.customPhrases;
+      }
+      return{...DEF,...d};
+    }
+  }catch(e){}
+  return{...DEF};
+}
+function saveState(s){store.set('mand2',JSON.stringify(s));}
+
+// ── Confetti ──────────────────────────────────────────────────────────
+const CONFETTI_ITEMS=['🎉','✨','🌟','🎊','⭐','🏮','福','喜','好','🀄','🎋'];
+function Confetti({score}){
+  if(score<8)return null;
+  const items=Array.from({length:score>=10?30:20},(_,i)=>({
+    left:Math.random()*100,
+    delay:Math.random()*0.8,
+    dur:1.2+Math.random()*1.5,
+    char:CONFETTI_ITEMS[Math.floor(Math.random()*CONFETTI_ITEMS.length)],
+    size:16+Math.floor(Math.random()*20),
+  }));
+  return <div style={{position:'fixed',top:0,left:0,width:'100%',height:'100%',pointerEvents:'none',overflow:'hidden',zIndex:9999}}>
+    {items.map((it,i)=><div key={i} style={{position:'absolute',left:it.left+'%',top:'-60px',fontSize:it.size,animation:`fall ${it.dur}s linear ${it.delay}s forwards`}}>{it.char}</div>)}
+  </div>;
+}
+
+// ── Chinese decorative SVG ────────────────────────────────────────────
+function LanternSVG({size=40}){
+  return <svg width={size} height={size*1.4} viewBox="0 0 40 56" fill="none">
+    <line x1="20" y1="0" x2="20" y2="8" stroke="#C8372D" strokeWidth="2"/>
+    <ellipse cx="20" cy="30" rx="14" ry="20" fill="#C8372D"/>
+    <ellipse cx="20" cy="30" rx="10" ry="16" fill="#E8502A" opacity="0.6"/>
+    <text x="20" y="35" textAnchor="middle" fill="#FFF8EE" fontSize="14" fontFamily="serif" fontWeight="900">福</text>
+    <line x1="20" y1="50" x2="20" y2="56" stroke="#C8372D" strokeWidth="2"/>
+    <line x1="14" y1="54" x2="26" y2="54" stroke="#C8372D" strokeWidth="1.5"/>
+  </svg>;
+}
+function DragonWaveSVG(){
+  return <svg viewBox="0 0 300 40" style={{width:'100%',height:40,opacity:0.08}} fill="none">
+    <path d="M0 20 Q30 5 60 20 Q90 35 120 20 Q150 5 180 20 Q210 35 240 20 Q270 5 300 20" stroke="#C8372D" strokeWidth="3" fill="none"/>
+    <circle cx="10" cy="18" r="3" fill="#C8372D"/>
+    <circle cx="70" cy="22" r="2" fill="#B98A2F"/>
+    <circle cx="150" cy="18" r="3" fill="#C8372D"/>
+    <circle cx="230" cy="22" r="2" fill="#B98A2F"/>
+  </svg>;
+}
+
+// ── Small UI ──────────────────────────────────────────────────────────
+function Seal({char,size=64,rotate=-3,bg=C.vermilion}){
+  return <div style={{width:size,height:size,background:bg,color:"#FFF8EE",fontFamily:HAN,fontWeight:900,fontSize:size*0.52,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:size*0.12,transform:`rotate(${rotate}deg)`,boxShadow:`0 2px 0 ${C.vermilionDark}`,lineHeight:1,flexShrink:0}}>{char}</div>;
+}
+function Btn({children,onClick,color=C.ink,bg="transparent",border=true,full,disabled,small,style:st}){
+  return <button onClick={onClick} disabled={disabled} style={{fontFamily:UI,fontWeight:700,fontSize:small?13:15,color,background:bg,border:border?`1.5px solid ${bg!=="transparent"?bg:C.ink}`:"none",padding:small?"8px 12px":"12px 18px",borderRadius:10,width:full?"100%":"auto",opacity:disabled?0.45:1,cursor:"pointer",...st}}>{children}</button>;
+}
+function SpeakBtn({chinese,pinyin,big}){
+  return <button onClick={e=>{e.stopPropagation();speak(chinese,pinyin);}} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:"50%",width:big?52:40,height:big?52:40,fontSize:big?22:17,cursor:"pointer",flexShrink:0}}>🔊</button>;
+}
+function ToneBar({pinyin}){
+  // visual tone indicator strip
+  const tones=parseTones(pinyin);
+  const cols={1:'#3A6B8A',2:'#3E7C59',3:'#B98A2F',4:'#C8372D',0:'#aaa'};
+  const labels={1:'¯',2:'´',3:'ˇ',4:'`',0:'·'};
+  return <div style={{display:'flex',gap:4,justifyContent:'center',flexWrap:'wrap'}}>
+    {tones.map((t,i)=><span key={i} style={{background:cols[t],color:'#fff',fontFamily:UI,fontWeight:700,fontSize:11,padding:'2px 5px',borderRadius:4}}>{labels[t]}</span>)}
+  </div>;
+}
+
+// ── Review session ────────────────────────────────────────────────────
+// FIX: pinyin shown on FRONT, meaning on BACK
+function ReviewSession({queue,state,setState,onDone}){
+  const[i,setI]=useState(0),[revealed,setRevealed]=useState(false);
+  const card=queue[i];if(!card)return null;
+  const phrase=getPhrase(state,card.id);
+  if(!phrase)return null;
+  const grade=g=>{
+    const cur=state.cards[card.id]||{lvl:0};
+    const lvl=g==="again"?0:g==="good"?Math.min(cur.lvl+1,5):Math.min(cur.lvl+2,5);
+    const due=new Date(Date.now()+INTERVALS[lvl]*86400000).toISOString().slice(0,10);
+    const t=todayStr();
+    const totalReviews=(state.totalReviews||0)+1;
+    const history={...state.studyHistory,[t]:(state.studyHistory?.[t]||0)+1};
+    const todaysCards=[...(state.todaysCards||[])];
+    if(!todaysCards.includes(card.id))todaysCards.push(card.id);
+    const next={...state,cards:{...state.cards,[card.id]:{lvl,due}},totalReviews,studyHistory:history,todaysCards,reviewsToday:(state.reviewsDate===t?state.reviewsToday:0)+1,reviewsDate:t};
+    if(next.lastStudy!==t){next.streak=next.lastStudy&&daysBetween(next.lastStudy,t)===1?next.streak+1:1;next.lastStudy=t;}
+    setState(next);saveState(next);setRevealed(false);
+    if(i+1>=queue.length)onDone(next);else setI(i+1);
+  };
+  return(<div style={{display:"flex",flexDirection:"column",gap:16,flex:1}}>
+    <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,display:'flex',justifyContent:'space-between'}}>
+      <span>CARD {i+1} / {queue.length}</span>
+      <span>{Math.round((i/queue.length)*100)}%</span>
+    </div>
+    <div style={{height:4,background:C.line,borderRadius:2}}><div style={{height:'100%',background:C.vermilion,borderRadius:2,width:`${(i/queue.length)*100}%`,transition:'width 0.3s'}}/></div>
+    <div onClick={()=>{if(!revealed){setRevealed(true);speak(phrase.c,phrase.p);}}} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:"32px 20px",textAlign:"center",cursor:"pointer",minHeight:280,display:"flex",flexDirection:"column",justifyContent:"center",gap:12}}>
+      {/* FRONT: Character + pinyin + approx */}
+      <div style={{fontFamily:HAN,fontWeight:900,fontSize:phrase.c.length>5?32:48,color:C.ink,lineHeight:1.2}}>{phrase.c}</div>
+      <div style={{fontFamily:UI,fontSize:18,color:C.vermilion,fontWeight:700}}>{phrase.p}</div>
+      <ToneBar pinyin={phrase.p}/>
+      {phrase.approx&&<div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,fontStyle:'italic'}}>🗣 sounds like: "{phrase.approx}"</div>}
+      {/* BACK: revealed */}
+      {revealed&&<div className="slideUp" style={{borderTop:`1px solid ${C.line}`,paddingTop:12,marginTop:4}}>
+        <div style={{fontFamily:UI,fontSize:22,color:C.ink,fontWeight:700,marginBottom:8}}>{phrase.e}</div>
+        <div style={{alignSelf:"center",display:'flex',justifyContent:'center'}}><SpeakBtn chinese={phrase.c} pinyin={phrase.p} big/></div>
+      </div>}
+      {!revealed&&<div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,marginTop:8}}>Tap to reveal meaning</div>}
+    </div>
+    {revealed?(<div style={{display:"flex",gap:10}}>
+      <Btn full bg={C.card} onClick={()=>grade("again")} style={{borderColor:C.vermilion,color:C.vermilion}}>Again</Btn>
+      <Btn full bg={C.ink} color="#FFF8EE" border={false} onClick={()=>grade("good")}>Good</Btn>
+      <Btn full bg={C.jade} color="#FFF8EE" border={false} onClick={()=>grade("easy")}>Easy ✓</Btn>
+    </div>):<Btn full onClick={()=>{setRevealed(true);speak(phrase.c,phrase.p);}}>Show meaning</Btn>}
+  </div>);
+}
+
+// ── Today view ────────────────────────────────────────────────────────
+function GeneratePhrases({state,setState}){
+  const[topic,setTopic]=useState(""),[busy,setBusy]=useState(false),[msg,setMsg]=useState(null);
+  const sets=state.customSets||[];
+  const generate=async()=>{
+    if(!topic.trim()||busy)return;
+    setBusy(true);setMsg(null);
+    try{
+      const prompt=`Generate 8 useful Mandarin travel phrases for the topic: "${topic.trim()}". Context: the learner is an Irish person visiting Chengdu, Chongqing and Xi'an in China in December 2026.\nReturn ONLY a valid JSON array, no markdown, no extra text:\n[{"c":"simplified Chinese","p":"pinyin with tone marks","e":"English meaning","approx":"rough English sound-alike pronunciation"}]`;
+      const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:800,messages:[{role:'user',content:prompt}]})});
+      const data=await res.json();
+      if(data.error)throw new Error(data.error.message);
+      const text=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+      const phrases=JSON.parse(text.replace(/```json|```/g,"").trim());
+      const setId='set_'+Date.now();
+      const counter=state.phraseCounter||10000;
+      const newPhrases=phrases.map((p,i)=>({...p,d:setId,id:counter+i}));
+      const newSet={id:setId,topic:topic.trim(),phrases:newPhrases,createdAt:new Date().toLocaleDateString()};
+      const next={...state,customSets:[...sets,newSet],phraseCounter:counter+newPhrases.length};
+      setState(next);saveState(next);
+      setMsg(`✓ Added "${topic.trim()}" (${newPhrases.length} phrases) as its own deck!`);
+      setTopic("");
+    }catch(e){setMsg("⚠ Error: "+e.message);}
+    setBusy(false);
+  };
+  return(<div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:14,padding:14,display:'flex',flexDirection:'column',gap:10}}>
+    <div style={{fontFamily:UI,fontWeight:700,fontSize:14,color:C.ink}}>✨ Generate topic phrases</div>
+    <div style={{fontFamily:UI,fontSize:12,color:C.inkSoft}}>Each topic becomes its own separate deck in Decks.</div>
+    <div style={{display:"flex",gap:8}}>
+      <input value={topic} onChange={e=>setTopic(e.target.value)} onKeyDown={e=>e.key==="Enter"&&generate()} placeholder="e.g. panda sanctuary, night market…" style={{flex:1,fontFamily:UI,fontSize:14,padding:"9px 12px",borderRadius:10,border:`1.5px solid ${C.line}`,background:C.paper,color:C.ink,outline:"none"}}/>
+      <button onClick={generate} disabled={busy||!topic.trim()} style={{background:C.jade,color:"#FFF8EE",border:"none",borderRadius:10,padding:"0 14px",fontFamily:UI,fontWeight:700,fontSize:14,cursor:"pointer",opacity:(busy||!topic.trim())?0.5:1}}>{busy?"…":"Add"}</button>
+    </div>
+    {msg&&<div style={{fontFamily:UI,fontSize:13,color:msg.startsWith("⚠")?C.vermilion:C.jade,fontWeight:700}}>{msg}</div>}
+    {sets.length>0&&<div style={{fontFamily:UI,fontSize:12,color:C.inkSoft}}>{sets.length} custom deck{sets.length!==1?"s":""}: {sets.map(s=>s.topic).join(", ")}</div>}
+  </div>);
+}
+function TodayView({state,setState}){
+  const[session,setSession]=useState(null),[settingsOpen,setSettingsOpen]=useState(false),[showGenerate,setShowGenerate]=useState(false);
+  const t=todayStr();
+  const allIds=getAllPhraseIds(state);
+  const dueIds=allIds.filter(id=>{const c=state.cards[id];return c&&c.due<=t;});
+  const newIds=allIds.filter(id=>!state.cards[id]).slice(0,state.newPerDay);
+  const learnedIds=allIds.filter(id=>state.cards[id]);
+  const weakIds=learnedIds.filter(id=>state.cards[id]&&state.cards[id].lvl<=1);
+  const todayIds=(state.todaysCards||[]).filter(id=>state.cards[id]);
+  const learned=learnedIds.length,mastered=learnedIds.filter(id=>state.cards[id]?.lvl>=4).length;
+  const days=last7Days(),weekStudied=days.filter(d=>state.studyHistory?.[d]>0).length;
+
+  if(session&&session!=="done")return <ReviewSession queue={session} state={state} setState={setState} onDone={()=>setSession("done")}/>;
+
+  const startSession=(ids)=>{
+    if(!ids.length)return;
+    const shuffled=[...ids].sort(()=>Math.random()-0.5);
+    setSession(shuffled.map(id=>({id})));
+  };
+
+  const SESSION_MODES=[
+    {
+      id:"main",
+      label: dueIds.length||newIds.length?"Start today's session":"All done for today",
+      sub: dueIds.length||newIds.length?`${dueIds.length} review · ${newIds.length} new`:"New reviews appear tomorrow based on your ratings",
+      color:C.vermilion,
+      disabled:!dueIds.length&&!newIds.length,
+      ids:[...dueIds,...newIds],
+      icon:"📚",
+    },
+    {
+      id:"repeat",
+      label:"Repeat today",
+      sub:todayIds.length?`Re-study ${todayIds.length} cards from today`:"Study something first",
+      color:C.sky,
+      disabled:!todayIds.length,
+      ids:todayIds,
+      icon:"🔄",
+    },
+    {
+      id:"weak",
+      label:"Weak cards",
+      sub:weakIds.length?`${weakIds.length} cards marked Again or low confidence`:"No weak cards yet",
+      color:C.gold,
+      disabled:!weakIds.length,
+      ids:weakIds,
+      icon:"💪",
+    },
+    {
+      id:"random",
+      label:"Random drill",
+      sub:learnedIds.length>=5?`Shuffle ${Math.min(20,learnedIds.length)} cards from everything you know`:"Learn at least 5 cards first",
+      color:C.jade,
+      disabled:learnedIds.length<5,
+      ids:learnedIds.slice().sort(()=>Math.random()-0.5).slice(0,20),
+      icon:"🎲",
+    },
+  ];
+
+  return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
+    <DragonWaveSVG/>
+    {/* Streak header */}
+    <div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:16,display:'flex',gap:14,alignItems:'center'}}>
+      <div style={{position:'relative'}}><Seal char={String(state.streak||0)} size={68}/><div style={{position:'absolute',bottom:-6,right:-6}}><LanternSVG size={22}/></div></div>
+      <div style={{flex:1}}>
+        <div style={{fontFamily:UI,fontWeight:700,fontSize:17,color:C.ink}}>{state.streak||0} day streak</div>
+        <div style={{fontFamily:UI,fontSize:12,color:C.inkSoft,marginBottom:8}}>{state.lastStudy===t?"Today's session done · 加油!":"Study today to extend your streak"}</div>
+        <div style={{display:'flex',gap:4}}>
+          {days.map(d=>{const done=state.studyHistory?.[d]>0,isToday=d===t;return<div key={d} style={{width:26,height:26,borderRadius:7,background:done?C.vermilion:C.paper,border:`1.5px solid ${done?C.vermilion:C.line}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontFamily:UI,fontWeight:700,color:done?'#FFF8EE':C.inkSoft,outline:isToday?`2px solid ${C.gold}`:"none"}}>{done?'✓':d.slice(8)}</div>;})}
+        </div>
+      </div>
+    </div>
+
+    {session==="done"&&<div className="pop" style={{background:C.jade,color:"#FFF8EE",borderRadius:12,padding:14,fontFamily:UI,fontWeight:700,textAlign:'center'}}>🎉 Session complete · 很好!</div>}
+
+    {/* Settings row */}
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+      <div style={{fontFamily:UI,fontSize:12,letterSpacing:1.5,color:C.inkSoft}}>STUDY SESSION</div>
+      <button onClick={()=>setSettingsOpen(!settingsOpen)} style={{background:'none',border:'none',fontFamily:UI,fontSize:12,color:C.gold,fontWeight:700,cursor:'pointer'}}>⚙ {state.newPerDay} new/day</button>
+    </div>
+    {settingsOpen&&<div style={{background:C.paper,borderRadius:10,padding:12,display:'flex',flexWrap:'wrap',gap:8,alignItems:'center'}}>
+      <span style={{fontFamily:UI,fontSize:13,color:C.inkSoft,width:'100%'}}>New phrases per day:</span>
+      {[5,8,12,20,30].map(n=><button key={n} onClick={()=>{const next={...state,newPerDay:n};setState(next);saveState(next);setSettingsOpen(false);}} style={{background:state.newPerDay===n?C.ink:C.card,color:state.newPerDay===n?'#FFF8EE':C.ink,border:`1.5px solid ${C.line}`,borderRadius:8,padding:'6px 12px',fontFamily:UI,fontWeight:700,fontSize:14,cursor:'pointer'}}>{n}</button>)}
+    </div>}
+
+    {/* Session mode cards */}
+    {SESSION_MODES.map(m=>(
+      <button key={m.id} disabled={m.disabled} onClick={()=>startSession(m.ids)} style={{background:C.card,border:`1.5px solid ${m.disabled?C.line:m.color}`,borderRadius:14,padding:"14px 16px",display:"flex",alignItems:"center",gap:14,cursor:m.disabled?"default":"pointer",textAlign:"left",opacity:m.disabled?0.55:1,width:"100%"}}>
+        <div style={{fontSize:26,width:36}}>{m.icon}</div>
+        <div style={{flex:1}}>
+          <div style={{fontFamily:UI,fontWeight:700,fontSize:15,color:m.disabled?C.inkSoft:C.ink}}>{m.label}</div>
+          <div style={{fontFamily:UI,fontSize:12,color:C.inkSoft,marginTop:2}}>{m.sub}</div>
+        </div>
+        {!m.disabled&&<div style={{fontFamily:HAN,fontWeight:900,fontSize:18,color:m.color}}>›</div>}
+      </button>
+    ))}
+
+    {/* Stats */}
+    <div style={{display:"flex",gap:8}}>
+      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:11,padding:11,textAlign:"center"}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:C.ink}}>{learned}<span style={{fontSize:12,color:C.inkSoft}}>/{getAllPhraseIds(state).length}</span></div>
+        <div style={{fontFamily:UI,fontSize:10,color:C.inkSoft}}>started</div>
+      </div>
+      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:11,padding:11,textAlign:"center"}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:C.jade}}>{mastered}</div>
+        <div style={{fontFamily:UI,fontSize:10,color:C.inkSoft}}>mastered</div>
+      </div>
+      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:11,padding:11,textAlign:"center"}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:C.gold}}>{weekStudied}</div>
+        <div style={{fontFamily:UI,fontSize:10,color:C.inkSoft}}>this week</div>
+      </div>
+      <div style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:11,padding:11,textAlign:"center"}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:C.sky}}>{state.totalReviews||0}</div>
+        <div style={{fontFamily:UI,fontSize:10,color:C.inkSoft}}>reviews</div>
+      </div>
+    </div>
+
+    {/* Generate phrases */}
+    <button onClick={()=>setShowGenerate(!showGenerate)} style={{background:"none",border:`1.5px dashed ${C.jade}`,borderRadius:12,padding:"10px 16px",fontFamily:UI,fontWeight:700,fontSize:14,color:C.jade,cursor:"pointer",textAlign:"left"}}>
+      {showGenerate?"▼":"▶"} ✨ Generate new phrases with AI
+    </button>
+    {showGenerate&&<GeneratePhrases state={state} setState={setState}/>}
+  </div>);
+}
+// ── Decks view ────────────────────────────────────────────────────────
+// ── Decks view ────────────────────────────────────────────────────────
+function DecksView({state,setState}){
+  const[open,setOpen]=useState(null),[session,setSession]=useState(null);
+  if(session&&session!=="done")return <ReviewSession queue={session} state={state} setState={setState} onDone={()=>setSession("done")}/>;
+  if(open){
+    const items=open.startsWith('set_')||open==='prev'||open==='migrated'
+      ? ((state.customSets||[]).find(s=>s.id===open)?.phrases||[]).map(p=>({...p}))
+      : PHRASES.map((p,id)=>({...p,id})).filter(p=>p.d===open);
+    const customSet=(state.customSets||[]).find(s=>s.id===open);
+    const deck=DECKS.find(d=>d.id===open)||(customSet?{id:open,name:customSet.topic,zh:"✨",icon:"✨"}:{id:"?",name:"Unknown",zh:"?",icon:"?"});
+    return(<div style={{display:"flex",flexDirection:"column",gap:10}}>
+      <button onClick={()=>setOpen(null)} style={{alignSelf:"flex-start",background:"none",border:"none",fontFamily:UI,fontWeight:700,color:C.vermilion,fontSize:15,cursor:"pointer",padding:0}}>← All decks</button>
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:4}}>
+        <span style={{fontSize:24}}>{deck.icon}</span>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:24,color:C.ink}}>{deck.zh}</div>
+        <div style={{fontFamily:UI,fontWeight:700,fontSize:15,color:C.inkSoft}}>{deck.name}</div>
+      </div>
+      {items.length>0
+        ?<Btn full bg={C.ink} color="#FFF8EE" border={false} onClick={()=>setSession(items.map(p=>({id:p.id})))}>Practise all {items.length} cards</Btn>
+        :<div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,padding:"8px 0"}}>No phrases in this deck yet.</div>
+      }
+      {items.map(p=>(<div key={p.id} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:10}}>
+        <SpeakBtn chinese={p.c} pinyin={p.p}/>
+        <div style={{flex:1}}>
+          <div style={{fontFamily:HAN,fontWeight:700,fontSize:19,color:C.ink}}>{p.c} <span style={{fontFamily:UI,fontWeight:700,fontSize:14,color:C.vermilion}}>{p.p}</span></div>
+          <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>{p.e}{p.approx&&<span style={{color:C.gold,fontStyle:'italic'}}> · "{p.approx}"</span>}</div>
+        </div>
+        {state.cards[p.id]?.lvl>=4&&<Seal char="记" size={26} rotate={4}/>}
+      </div>))}
+    </div>);
+  }
+  return(<div style={{display:"flex",flexDirection:"column",gap:8}}>
+    {session==="done"&&<div className="pop" style={{background:C.jade,color:"#FFF8EE",borderRadius:12,padding:14,fontFamily:UI,fontWeight:700}}>Done! 很好!</div>}
+    {/* Separate deck per generated topic */}
+    {(state.customSets||[]).map(set=>{
+      const done=set.phrases.filter(p=>state.cards[p.id]?.lvl>=4).length;
+      const pct=Math.round((done/set.phrases.length)*100);
+      return <button key={set.id} onClick={()=>setOpen(set.id)} style={{background:C.card,border:`1.5px solid ${C.jade}`,borderRadius:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",textAlign:"left",width:"100%"}}>
+        <span style={{fontSize:22,width:30}}>✨</span>
+        <div style={{flex:1}}>
+          <div style={{fontFamily:UI,fontWeight:700,fontSize:15,color:C.ink}}>{set.topic}</div>
+          <div style={{height:4,background:C.line,borderRadius:2,marginTop:4}}><div style={{height:"100%",background:C.jade,borderRadius:2,width:pct+"%"}}/></div>
+          <div style={{fontFamily:UI,fontSize:11,color:C.inkSoft,marginTop:2}}>{done}/{set.phrases.length} mastered · {set.createdAt||"custom"}</div>
+        </div>
+        <div style={{color:C.inkSoft}}>›</div>
+      </button>;
+    })}
+    {DECKS.map(d=>{
+      const items=PHRASES.filter(p=>p.d===d.id);
+      const done=items.filter(p=>{const id=PHRASES.indexOf(p);return state.cards[id]?.lvl>=4;}).length;
+      const pct=Math.round((done/items.length)*100);
+      return <button key={d.id} onClick={()=>setOpen(d.id)} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",textAlign:"left"}}>
+        <span style={{fontSize:22,width:30}}>{d.icon}</span>
+        <div style={{flex:1}}>
+          <div style={{fontFamily:UI,fontWeight:700,fontSize:15,color:C.ink}}>{d.name}</div>
+          <div style={{height:4,background:C.line,borderRadius:2,marginTop:4}}><div style={{height:'100%',background:pct===100?C.jade:C.vermilion,borderRadius:2,width:pct+'%'}}/></div>
+          <div style={{fontFamily:UI,fontSize:11,color:C.inkSoft,marginTop:2}}>{done}/{items.length} mastered</div>
+        </div>
+        <div style={{color:C.inkSoft}}>›</div>
+      </button>;
+    })}
+  </div>);
+}
+
+// ── Quiz view ─────────────────────────────────────────────────────────
+function QuizView({state,setState}){
+  const[mode,setMode]=useState(null),[qs,setQs]=useState([]),[i,setI]=useState(0),[picked,setPicked]=useState(null),[score,setScore]=useState(0),[showConf,setShowConf]=useState(false);
+  const startMeaning=()=>{
+    const pool=[...PHRASES.keys()];
+    const questions=pool.sort(()=>Math.random()-0.5).slice(0,10).map(id=>{
+      const wrong=pool.filter(x=>x!==id).sort(()=>Math.random()-0.5).slice(0,3);
+      return{id,options:[id,...wrong].sort(()=>Math.random()-0.5)};
+    });
+    setQs(questions);setI(0);setScore(0);setPicked(null);setMode("meaning");setShowConf(false);
+  };
+  const startTone=()=>{
+    const questions=[...TONE_ITEMS].sort(()=>Math.random()-0.5).slice(0,10);
+    setQs(questions);setI(0);setScore(0);setPicked(null);setMode("tone");setShowConf(false);
+    setTimeout(()=>speak(questions[0].c,questions[0].p),400);
+  };
+  const finish=(fs,kind)=>{
+    const k=kind==="meaning"?"quizBest":"toneBest";
+    setShowConf(true);
+    if(fs>state[k]){const next={...state,[k]:fs};setState(next);saveState(next);}
+  };
+  if(mode==="meaning"&&i<qs.length){
+    const q=qs[i],phrase=PHRASES[q.id];
+    return(<div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div style={{display:'flex',justifyContent:'space-between',fontFamily:UI,fontSize:13,color:C.inkSoft}}><span>Q{i+1}/10</span><span>{score} correct</span></div>
+      <div style={{height:4,background:C.line,borderRadius:2}}><div style={{height:'100%',background:C.jade,borderRadius:2,width:`${(score/10)*100}%`,transition:'width 0.3s'}}/></div>
+      <div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:28,textAlign:"center"}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:42,color:C.ink,marginBottom:6}}>{phrase.c}</div>
+        <div style={{fontFamily:UI,fontSize:17,color:C.vermilion,fontWeight:700,marginBottom:6}}>{phrase.p}</div>
+        <SpeakBtn chinese={phrase.c} pinyin={phrase.p}/>
+        <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,marginTop:8}}>What does this mean?</div>
+      </div>
+      {q.options.map(opt=>{
+        let bg=C.card,col=C.ink,bord=C.line;
+        if(picked!==null){if(opt===q.id){bg=C.jade;col="#FFF8EE";bord=C.jade;}else if(opt===picked){bg=C.vermilion;col="#FFF8EE";bord=C.vermilion;}}
+        return <button key={opt} disabled={picked!==null} onClick={()=>{
+          setPicked(opt);
+          // FIX: compute ns correctly, update score state for BOTH last and non-last questions
+          const ns=score+(opt===q.id?1:0);
+          setTimeout(()=>{
+            if(i+1>=qs.length){setScore(ns);finish(ns,"meaning");setI(i+1);}
+            else{setScore(ns);setI(i+1);setPicked(null);}
+          },900);
+        }} style={{background:bg,color:col,border:`1.5px solid ${bord}`,borderRadius:12,padding:"13px 16px",fontFamily:UI,fontWeight:700,fontSize:15,textAlign:"left",cursor:"pointer"}}>{PHRASES[opt].e}</button>;
+      })}
+    </div>);
+  }
+  if(mode==="tone"&&i<qs.length){
+    const q=qs[i],toneNames=["1st tone ¯ (high flat)","2nd tone ´ (rising)","3rd tone ˇ (dip-rise)","4th tone ` (falling)"];
+    return(<div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div style={{display:'flex',justifyContent:'space-between',fontFamily:UI,fontSize:13,color:C.inkSoft}}><span>TONE {i+1}/10</span><span>{score} correct</span></div>
+      <div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:28,textAlign:"center"}}>
+        <div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginBottom:14}}>Listen — which tone?</div>
+        <button onClick={()=>speak(q.c,q.p)} style={{background:C.ink,color:"#FFF8EE",border:"none",borderRadius:"50%",width:72,height:72,fontSize:28,cursor:"pointer"}}>🔊</button>
+        {picked!==null&&<div className="pop" style={{marginTop:14,fontFamily:HAN,fontWeight:900,fontSize:26,color:C.ink}}>{q.c} <span style={{fontFamily:UI,fontWeight:700,fontSize:18,color:C.vermilion}}>{q.p}</span></div>}
+      </div>
+      {[1,2,3,4].map(t=>{
+        let bg=C.card,col=C.ink,bord=C.line;
+        if(picked!==null){if(t===q.t){bg=C.jade;col="#FFF8EE";bord=C.jade;}else if(t===picked){bg=C.vermilion;col="#FFF8EE";bord=C.vermilion;}}
+        return <button key={t} disabled={picked!==null} onClick={()=>{
+          setPicked(t);
+          const ns=score+(t===q.t?1:0);
+          setTimeout(()=>{
+            if(i+1>=qs.length){setScore(ns);finish(ns,"tone");setI(i+1);}
+            else{setScore(ns);setI(i+1);setPicked(null);setTimeout(()=>speak(qs[i+1].c,qs[i+1].p),300);}
+          },1100);
+        }} style={{background:bg,color:col,border:`1.5px solid ${bord}`,borderRadius:12,padding:"13px 16px",fontFamily:UI,fontWeight:700,fontSize:15,textAlign:"left",cursor:"pointer"}}>{toneNames[t-1]}</button>;
+      })}
+    </div>);
+  }
+  if(mode&&i>=qs.length){
+    const grade=score>=10?"优":score>=8?"良":score>=6?"好":"练";
+    const gradeCol=score>=10?C.jade:score>=8?C.sky:score>=6?C.gold:C.inkSoft;
+    const msg=score===10?"Perfect! You're unstoppable. 优秀!":score>=8?"Excellent work! 很好!":score>=6?"Solid effort. Keep going!":"Tones take time. You've got this!";
+    return(<div style={{display:"flex",flexDirection:"column",gap:20,alignItems:"center",paddingTop:20}}>
+      {showConf&&<Confetti score={score}/>}
+      <div className="pop"><Seal char={grade} size={100} rotate={3} bg={gradeCol}/></div>
+      <div style={{fontFamily:HAN,fontWeight:900,fontSize:52,color:C.ink}}>{score}/10</div>
+      <div style={{fontFamily:UI,fontSize:16,color:C.inkSoft,textAlign:"center",lineHeight:1.5}}>{msg}</div>
+      {mode==="meaning"&&score>state.quizBest&&<div style={{background:C.gold,color:"#FFF8EE",borderRadius:10,padding:"8px 18px",fontFamily:UI,fontWeight:700}}>🏆 New best score!</div>}
+      <div style={{display:'flex',gap:10,width:'100%'}}>
+        <Btn full bg={C.vermilion} color="#FFF8EE" border={false} onClick={mode==="meaning"?startMeaning:startTone}>Try again</Btn>
+        <Btn full onClick={()=>setMode(null)}>Back</Btn>
+      </div>
+    </div>);
+  }
+  return(<div style={{display:"flex",flexDirection:"column",gap:14}}>
+    <button onClick={startMeaning} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:20,textAlign:"left",cursor:"pointer"}}>
+      <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.vermilion}}>词义 Meaning quiz</div>
+      <div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginTop:4}}>See a phrase, pick the English meaning. Best: {state.quizBest}/10</div>
+    </button>
+    <button onClick={startTone} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:20,textAlign:"left",cursor:"pointer"}}>
+      <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.vermilion}}>声调 Tone trainer</div>
+      <div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginTop:4}}>Listen and identify which tone it is. Best: {state.toneBest}/10</div>
+    </button>
+    <button onClick={()=>{
+      const pool=Object.entries(state.cards).filter(([,c])=>c.lvl>0).map(([id])=>Number(id));
+      if(pool.length<4){alert("Study at least 4 cards first!");return;}
+      const questions=pool.sort(()=>Math.random()-0.5).slice(0,Math.min(10,pool.length)).map(id=>{
+        const wrong=pool.filter(x=>x!==id).sort(()=>Math.random()-0.5).slice(0,3);
+        return{id,options:[id,...wrong].sort(()=>Math.random()-0.5)};
+      });
+      setQs(questions);setI(0);setScore(0);setPicked(null);setMode("meaning");setShowConf(false);
+    }} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:20,textAlign:"left",cursor:"pointer"}}>
+      <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.sky}}>复习 Review quiz</div>
+      <div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginTop:4}}>Quiz on cards you've already studied ({Object.keys(state.cards).length} available)</div>
+    </button>
+  </div>);
+}
+
+// ── Speech recognition hook ─────────────────────────────────────────
+// ── Voice recording hook (MediaRecorder + Whisper — works on all phones) ─
+function useSpeechInput(onResult){
+  const[status,setStatus]=useState('idle'); // idle|recording|transcribing|error
+  const[errMsg,setErrMsg]=useState('');
+  const[lang,setLang]=useState('en-US');
+  const streamRef=useRef(null);
+  const recorderRef=useRef(null);
+  const chunksRef=useRef([]);
+
+  const start=async()=>{
+    // If already recording, stop and transcribe
+    if(status==='recording'){
+      recorderRef.current?.stop();
+      return;
+    }
+    if(status==='transcribing')return;
+    setErrMsg('');setStatus('recording');chunksRef.current=[];
+
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      streamRef.current=stream;
+      const rec=new MediaRecorder(stream);
+      recorderRef.current=rec;
+
+      rec.ondataavailable=e=>{if(e.data.size>0)chunksRef.current.push(e.data);};
+
+      rec.onstop=async()=>{
+        stream.getTracks().forEach(t=>t.stop());
+        if(!chunksRef.current.length){setStatus('idle');return;}
+        setStatus('transcribing');
+        try{
+          const blob=new Blob(chunksRef.current,{type:'audio/webm'});
+          const b64=await new Promise(resolve=>{
+            const r=new FileReader();
+            r.onload=()=>resolve(r.result.split(',')[1]);
+            r.readAsDataURL(blob);
+          });
+          const res=await fetch('/api/transcribe',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({audio:b64,mimeType:'audio/webm'}),
+          });
+          const data=await res.json();
+          if(data.error){
+            const msg=typeof data.error==='string'?data.error:(data.error?.message||JSON.stringify(data.error));
+            throw new Error(msg);
+          }
+          if(data.text?.trim()){onResult(data.text.trim());setStatus('idle');}
+          else{setErrMsg('No speech detected — try again');setStatus('error');}
+        }catch(e){
+          setErrMsg('Transcription failed: '+e.message);
+          setStatus('error');
+        }
+      };
+
+      rec.start(250); // collect chunks every 250ms
+    }catch(e){
+      if(e.name==='NotAllowedError'){
+        setErrMsg('Mic blocked — tap the 🔒 lock icon in Chrome\'s address bar → Permissions → Microphone → Allow, then reload');
+      }else{
+        setErrMsg('Mic error: '+e.message);
+      }
+      setStatus('error');
+    }
+  };
+
+  const clear=()=>{setStatus('idle');setErrMsg('');};
+  return{
+    status,errMsg,lang,setLang,start,clear,
+    supported:!!(navigator.mediaDevices?.getUserMedia),
+    listening:status==='recording',
+    transcribing:status==='transcribing',
+    hasError:status==='error',
+  };
+}
+// ── Speak view ────────────────────────────────────────────────────────
+function SpeakView(){
+  const[scenario,setScenario]=useState(null),[msgs,setMsgs]=useState([]),[input,setInput]=useState(""),[busy,setBusy]=useState(false),[showHelp,setShowHelp]=useState({}),[apiErr,setApiErr]=useState(null);
+  const mic=useSpeechInput(text=>{setInput(text);});
+  const bottomRef=useRef(null);
+  useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[msgs,busy]);
+  const callClaude=async(history,userText,sc)=>{
+    const convo=history.map(m=>m.who==="me"?`Learner: ${m.text}`:`You: ${m.chinese}`).join("\n");
+    const prompt=`You are roleplaying as ${sc.role}. The learner is an Irish beginner studying Mandarin for a trip to Chengdu, Chongqing and Xi'an in December 2026. Speak VERY simple Mandarin (HSK1-2 level), 1-2 short sentences max. Be friendly and encouraging.\n\nConversation so far:\n${convo||"(start — greet them naturally and open the scenario)"}\n\n${userText?`Learner says: ${userText}`:""}\n\nRespond ONLY with valid JSON, no markdown fences, no extra text:\n{"chinese":"your reply in simplified Chinese","pinyin":"pinyin with all tone marks","english":"English translation of your reply","tip":"one short friendly tip about what the learner said, or null if they haven't spoken yet"}`;
+    const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:500,messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();
+    if(data.error)throw new Error(data.error.message||JSON.stringify(data.error));
+    const text=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+    return JSON.parse(text.replace(/```json|```/g,"").trim());
+  };
+  const start=async sc=>{setScenario(sc);setMsgs([]);setBusy(true);setApiErr(null);
+    try{const r=await callClaude([],null,sc);setMsgs([{who:"ai",...r}]);speak(r.chinese,r.pinyin);}
+    catch(e){setApiErr(e.message);setMsgs([{who:"ai",chinese:"你好！",pinyin:"nǐ hǎo!",english:"Hello! (Could not reach AI — check your ANTHROPIC_API_KEY in Vercel settings)",tip:null}]);}
+    setBusy(false);
+  };
+  const send=async()=>{if(!input.trim()||busy)return;const mine={who:"me",text:input.trim()};const history=[...msgs,mine];setMsgs(history);setInput("");setBusy(true);
+    try{const r=await callClaude(msgs,mine.text,scenario);setMsgs([...history,{who:"ai",...r}]);speak(r.chinese,r.pinyin);}
+    catch(e){setMsgs([...history,{who:"ai",chinese:"再说一遍？",pinyin:"zài shuō yí biàn?",english:"Connection issue. Check Vercel logs.",tip:null}]);}
+    setBusy(false);
+  };
+  if(!scenario)return(<div style={{display:"flex",flexDirection:"column",gap:12}}>
+    <div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,lineHeight:1.5}}>Practise real conversations. Reply in Chinese, pinyin, or English and get corrections.</div>
+    {SCENARIOS.map(sc=><button key={sc.id} onClick={()=>start(sc)} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:14,padding:"14px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",textAlign:"left"}}>
+      <div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:C.vermilion,width:52}}>{sc.zh}</div>
+      <div><div style={{fontFamily:UI,fontWeight:700,fontSize:15,color:C.ink}}>{sc.name}</div></div>
+    </button>)}
+  </div>);
+  return(<div style={{display:"flex",flexDirection:"column",height:"100%",gap:10}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <button onClick={()=>setScenario(null)} style={{background:"none",border:"none",fontFamily:UI,fontWeight:700,color:C.vermilion,fontSize:15,cursor:"pointer",padding:0}}>← Scenarios</button>
+      <div style={{fontFamily:UI,fontWeight:700,fontSize:13,color:C.inkSoft}}>{scenario.name}</div>
+    </div>
+    {apiErr&&<div style={{background:"#FBF3E3",border:`1.5px solid ${C.gold}`,borderRadius:10,padding:10,fontFamily:UI,fontSize:12,color:C.ink}}>⚠️ API error: {apiErr}. Make sure ANTHROPIC_API_KEY is set in your Vercel environment variables.</div>}
+    <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:10,paddingBottom:8}}>
+      {msgs.map((m,idx)=>m.who==="me"?
+        <div key={idx} style={{alignSelf:"flex-end",maxWidth:"82%",background:C.ink,color:"#FFF8EE",borderRadius:"14px 14px 4px 14px",padding:"10px 14px",fontFamily:UI,fontSize:15}}>{m.text}</div>:
+        <div key={idx} className="slideUp" style={{alignSelf:"flex-start",maxWidth:"90%",display:"flex",flexDirection:"column",gap:4}}>
+          <div style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:"14px 14px 14px 4px",padding:"12px 14px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><div style={{fontFamily:HAN,fontWeight:700,fontSize:22,color:C.ink,flex:1}}>{m.chinese}</div><SpeakBtn chinese={m.chinese} pinyin={m.pinyin}/></div>
+            <div style={{fontFamily:UI,fontSize:15,color:C.vermilion,fontWeight:700}}>{m.pinyin}</div>
+            {showHelp[idx]?<div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,marginTop:4}}>{m.english}</div>:<button onClick={()=>setShowHelp({...showHelp,[idx]:true})} style={{background:"none",border:"none",color:C.gold,fontFamily:UI,fontWeight:700,fontSize:13,cursor:"pointer",padding:"4px 0 0",textAlign:"left"}}>Show translation</button>}
+          </div>
+          {m.tip&&<div style={{fontFamily:UI,fontSize:13,color:C.jade,fontWeight:700,paddingLeft:4}}>✎ {m.tip}</div>}
+        </div>
+      )}
+      {busy&&<div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,animation:'pulse 1s infinite'}}>…thinking</div>}
+      <div ref={bottomRef}/>
+    </div>
+    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+      {mic.supported&&<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,flexShrink:0}}>
+        <div style={{display:"flex",gap:4}}>
+          <button onClick={()=>mic.setLang(mic.lang==='en-US'?'zh-CN':'en-US')} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:8,padding:"0 8px",height:36,fontFamily:UI,fontWeight:700,fontSize:12,color:C.ink,cursor:"pointer"}}>{mic.lang==='en-US'?'EN':'中'}</button>
+          <button onClick={mic.start} style={{background:mic.listening?C.vermilion:mic.hasError?"#FBF3E3":C.card,border:`1.5px solid ${mic.listening?C.vermilion:mic.hasError?C.gold:C.line}`,borderRadius:"50%",width:36,height:36,fontSize:17,cursor:"pointer",animation:mic.listening?"pulse 1s infinite":undefined}}>🎤</button>
+        </div>
+        <div style={{fontFamily:UI,fontSize:9,color:mic.transcribing?C.jade:C.inkSoft,textAlign:"center"}}>{mic.transcribing?"…":"tap once"}</div>
+      </div>}
+      <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder={mic.supported?"Speak 🎤 or type…":"Reply in Chinese, pinyin or English…"} style={{flex:1,fontFamily:UI,fontSize:14,padding:"11px 12px",borderRadius:12,border:`1.5px solid ${C.line}`,background:C.card,color:C.ink,outline:"none"}}/>
+      <button onClick={send} disabled={busy} style={{background:C.vermilion,color:"#FFF8EE",border:"none",borderRadius:12,padding:"0 14px",fontFamily:UI,fontWeight:700,fontSize:15,cursor:"pointer",opacity:busy?0.5:1,height:46}}>Send</button>
+    </div>
+    {mic.listening&&<div style={{fontFamily:UI,fontSize:13,color:C.vermilion,fontWeight:700,textAlign:'center',animation:'pulse 1s infinite'}}>🎤 Recording… tap 🎤 again to stop and transcribe</div>}
+    {mic.transcribing&&<div style={{fontFamily:UI,fontSize:13,color:C.jade,fontWeight:700,textAlign:'center',animation:'pulse 1s infinite'}}>⏳ Transcribing with Whisper…</div>}
+    {mic.hasError&&<div onClick={mic.clear} style={{fontFamily:UI,fontSize:12,color:C.ink,background:"#FBF3E3",border:`1px solid ${C.gold}`,borderRadius:8,padding:"8px 12px",cursor:"pointer"}}>⚠️ {mic.errMsg} <span style={{color:C.gold}}>(tap to dismiss)</span></div>}
+  </div>);
+}
+
+// ── Translate view (NEW) ──────────────────────────────────────────────
+function TranslateView(){
+  const[input,setInput]=useState(""),[result,setResult]=useState(null),[busy,setBusy]=useState(false),[history,setHistory]=useState([]);
+  const mic=useSpeechInput(text=>{setInput(text);});
+  const translate=async()=>{
+    if(!input.trim()||busy)return;
+    setBusy(true);setResult(null);
+    try{
+      const prompt=`Translate the following text. Detect the language automatically — if it is English translate to Chinese, if it is Chinese translate to English.\n\nText: "${input.trim()}"\n\nRespond ONLY with valid JSON:\n{"chinese":"simplified Chinese","pinyin":"full pinyin with tone marks","english":"English translation","approx":"rough English sound-alike pronunciation (e.g. nee how for 你好)","example_cn":"a short example sentence using this in Chinese","example_en":"English translation of the example sentence"}`;
+      const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:500,messages:[{role:'user',content:prompt}]})});
+      const data=await res.json();
+      if(data.error)throw new Error(data.error.message);
+      const text=(data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+      const r=JSON.parse(text.replace(/```json|```/g,"").trim());
+      setResult(r);
+      setHistory(h=>[{input:input.trim(),...r},...h].slice(0,20));
+    }catch(e){setResult({error:e.message});}
+    setBusy(false);
+  };
+  return(<div style={{display:"flex",flexDirection:"column",gap:14}}>
+    <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.ink}}>翻译 Translate</div>
+    <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>Type anything in English or Chinese.</div>
+    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+      {mic.supported&&<>
+        <button onClick={()=>mic.setLang(mic.lang==='en-US'?'zh-CN':'en-US')} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:8,padding:"0 8px",height:46,fontFamily:UI,fontWeight:700,fontSize:12,color:C.ink,cursor:"pointer",flexShrink:0}}>{mic.lang==='en-US'?'EN':'中'}</button>
+        <button onClick={mic.start} style={{background:mic.listening?C.vermilion:mic.hasError?"#FBF3E3":C.card,border:`1.5px solid ${mic.listening?C.vermilion:mic.hasError?C.gold:C.line}`,borderRadius:"50%",width:46,height:46,fontSize:20,cursor:"pointer",flexShrink:0,animation:mic.listening?"pulse 1s infinite":undefined}}>🎤</button>
+      </>}
+      <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&translate()} placeholder={mic.supported?"Speak 🎤 or type…":"Type English or Chinese…"} style={{flex:1,fontFamily:UI,fontSize:14,padding:"11px 12px",borderRadius:12,border:`1.5px solid ${C.line}`,background:C.card,color:C.ink,outline:"none"}}/>
+      <button onClick={translate} disabled={busy} style={{background:C.vermilion,color:"#FFF8EE",border:"none",borderRadius:12,padding:"0 14px",fontFamily:UI,fontWeight:700,fontSize:15,cursor:"pointer",opacity:busy?0.5:1,height:46}}>{busy?"…":"Go"}</button>
+    </div>
+    {mic.listening&&<div style={{fontFamily:UI,fontSize:13,color:C.vermilion,fontWeight:700,textAlign:'center',animation:'pulse 1s infinite'}}>🎤 Recording… tap 🎤 again to stop and transcribe</div>}
+    {mic.transcribing&&<div style={{fontFamily:UI,fontSize:13,color:C.jade,fontWeight:700,textAlign:'center',animation:'pulse 1s infinite'}}>⏳ Transcribing with Whisper…</div>}
+    {mic.hasError&&<div onClick={mic.clear} style={{fontFamily:UI,fontSize:12,color:C.ink,background:"#FBF3E3",border:`1px solid ${C.gold}`,borderRadius:8,padding:"8px 12px",cursor:"pointer"}}>⚠️ {mic.errMsg} <span style={{color:C.gold}}>(tap to dismiss)</span></div>}
+    {result&&!result.error&&<div className="slideUp" style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:16,padding:20,display:"flex",flexDirection:"column",gap:12}}>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
+        <div style={{flex:1}}>
+          <div style={{fontFamily:HAN,fontWeight:900,fontSize:36,color:C.ink,lineHeight:1.2}}>{result.chinese}</div>
+          <div style={{fontFamily:UI,fontSize:18,color:C.vermilion,fontWeight:700,marginTop:4}}>{result.pinyin}</div>
+          <ToneBar pinyin={result.pinyin}/>
+        </div>
+        <button onClick={()=>speakLang(result.chinese,'zh-CN',result.pinyin)} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:"50%",width:46,height:46,fontSize:20,cursor:"pointer",flexShrink:0}} title="Hear Chinese">🔊</button>
+      </div>
+      {result.approx&&<div style={{fontFamily:UI,fontSize:14,color:C.inkSoft,fontStyle:'italic'}}>🗣 sounds like: "{result.approx}"</div>}
+      <div style={{borderTop:`1px solid ${C.line}`,paddingTop:10,display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+        <div style={{fontFamily:UI,fontSize:16,color:C.ink,fontWeight:700,flex:1}}>{result.english}</div>
+        <button onClick={()=>speakLang(result.english,'en')} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:"50%",width:46,height:46,fontSize:20,cursor:"pointer",flexShrink:0}} title="Hear English">🔊</button>
+      </div>
+      {result.example_cn&&<div style={{background:C.paper,borderRadius:10,padding:12}}>
+        <div style={{fontFamily:UI,fontSize:11,letterSpacing:1,color:C.inkSoft,marginBottom:4}}>EXAMPLE</div>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:HAN,fontWeight:700,fontSize:16,color:C.ink}}>{result.example_cn}</div>
+            <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,marginTop:2}}>{result.example_en}</div>
+          </div>
+          <button onClick={()=>speakLang(result.example_cn,'zh-CN')} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:"50%",width:36,height:36,fontSize:16,cursor:"pointer",flexShrink:0}}>🔊</button>
+        </div>
+      </div>}
+    </div>}
+    {result?.error&&<div style={{background:"#FBF3E3",borderRadius:12,padding:14,fontFamily:UI,fontSize:13,color:C.ink}}>⚠️ {result.error}. Check your ANTHROPIC_API_KEY in Vercel settings.</div>}
+    {history.length>0&&<div>
+      <div style={{fontFamily:UI,fontSize:12,letterSpacing:1.5,color:C.inkSoft,marginBottom:8}}>RECENT</div>
+      {history.slice(0,5).map((h,i)=><button key={i} onClick={()=>{setInput(h.input);setResult(h);}} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:10,padding:"10px 12px",width:"100%",textAlign:"left",marginBottom:6,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>{h.input}</span>
+        <span style={{fontFamily:HAN,fontWeight:700,fontSize:14,color:C.ink}}>{h.chinese}</span>
+      </button>)}
+    </div>}
+  </div>);
+}
+
+
+// ── Phrasebook view (fully offline) ──────────────────────────────────
+function PhrasebookView(){
+  const[section,setSection]=useState("all");
+  const[search,setSearch]=useState("");
+  const[bigCard,setBigCard]=useState(null);
+  const filtered=BOOK.filter(p=>{
+    const matchSection=section==="all"||p.s===section;
+    const q=search.toLowerCase();
+    const matchSearch=!q||p.c.includes(q)||p.p.toLowerCase().includes(q)||p.e.toLowerCase().includes(q);
+    return matchSection&&matchSearch;
+  });
+  // Full-screen "show to local" overlay
+  if(bigCard)return(
+    <div onClick={()=>setBigCard(null)} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:C.ink,zIndex:9999,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:32,cursor:"pointer"}}>
+      <div style={{fontFamily:HAN,fontWeight:900,fontSize:72,color:"#FFF8EE",textAlign:"center",lineHeight:1.2,marginBottom:20}}>{bigCard.c}</div>
+      <div style={{fontFamily:UI,fontSize:22,color:C.vermilion,fontWeight:700,marginBottom:8}}>{bigCard.p}</div>
+      <div style={{fontFamily:UI,fontSize:18,color:"#FFF8EEAA",marginBottom:32}}>{bigCard.e}</div>
+      <div style={{display:"flex",gap:16}}>
+        <button onClick={e=>{e.stopPropagation();speak(bigCard.c,bigCard.p);}} style={{background:C.vermilion,border:"none",borderRadius:50,width:64,height:64,fontSize:28,cursor:"pointer"}}>🔊</button>
+        <button onClick={()=>setBigCard(null)} style={{background:"#FFF8EE22",border:"1.5px solid #FFF8EE44",borderRadius:50,width:64,height:64,fontSize:22,cursor:"pointer",color:"#FFF8EE",fontFamily:UI,fontWeight:700}}>✕</button>
+      </div>
+      <div style={{position:"absolute",bottom:24,fontFamily:UI,fontSize:13,color:"#FFF8EE66"}}>Tap anywhere to close</div>
+    </div>
+  );
+  return(<div style={{display:"flex",flexDirection:"column",gap:12}}>
+    {/* Header */}
+    <div style={{display:"flex",alignItems:"center",gap:10}}>
+      <div style={{fontFamily:HAN,fontWeight:900,fontSize:22,color:C.ink,flex:1}}>手册 Phrasebook</div>
+      <div style={{fontFamily:UI,fontSize:12,color:C.inkSoft,textAlign:"right"}}>Tap card for<br/>show-to-local</div>
+    </div>
+    {/* Search */}
+    <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search phrases…" style={{fontFamily:UI,fontSize:15,padding:"10px 14px",borderRadius:12,border:`1.5px solid ${C.line}`,background:C.card,color:C.ink,outline:"none",width:"100%"}}/>
+    {/* Section tabs - horizontal scroll */}
+    <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
+      {BOOK_SECTIONS.map(s=><button key={s.id} onClick={()=>setSection(s.id)} style={{background:section===s.id?C.vermilion:C.card,color:section===s.id?"#FFF8EE":C.ink,border:`1.5px solid ${section===s.id?C.vermilion:C.line}`,borderRadius:20,padding:"6px 12px",fontFamily:UI,fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>{s.icon} {s.name}</button>)}
+    </div>
+    {/* Phrase count */}
+    <div style={{fontFamily:UI,fontSize:12,color:C.inkSoft}}>{filtered.length} phrases {search&&`matching "${search}"`}</div>
+    {/* Phrase cards */}
+    {filtered.map((p,i)=>(
+      <div key={i} onClick={()=>setBigCard(p)} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:14,padding:"14px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
+        <div style={{flex:1}}>
+          <div style={{fontFamily:HAN,fontWeight:700,fontSize:22,color:C.ink,lineHeight:1.2}}>{p.c}</div>
+          <div style={{fontFamily:UI,fontSize:14,color:C.vermilion,fontWeight:700,marginTop:2}}>{p.p}</div>
+          <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,marginTop:1}}>{p.e}</div>
+        </div>
+        <button onClick={e=>{e.stopPropagation();speak(p.c,p.p);}} style={{background:C.paper,border:`1.5px solid ${C.line}`,borderRadius:"50%",width:40,height:40,fontSize:18,cursor:"pointer",flexShrink:0}}>🔊</button>
+      </div>
+    ))}
+    {filtered.length===0&&<div style={{textAlign:"center",fontFamily:UI,color:C.inkSoft,padding:32}}>No phrases found</div>}
+  </div>);
+}
+
+
+// ── HSK vocabulary data ───────────────────────────────────────────────
+const HSK_BASE=20000;
+function getHskId(lv,i){return HSK_BASE+(lv-1)*1000+i;}
+function getHskWord(id){
+  if(id<HSK_BASE)return null;
+  const off=id-HSK_BASE,lv=Math.floor(off/1000)+1,idx=off%1000;
+  if(lv<1||lv>5)return null;
+  const w=HSK[lv];if(!w||idx>=w.length)return null;
+  return{...w[idx],id,d:'hsk'+lv};
+}
+const HSK={
+1:[
+  {c:"爱",p:"ài",e:"Love"},
+  {c:"八",p:"bā",e:"8"},
+  {c:"爸爸",p:"bàba",e:"Dad"},
+  {c:"杯子",p:"bēizi",e:"Cup / glass"},
+  {c:"北京",p:"Běijīng",e:"Beijing"},
+  {c:"不客气",p:"bú kèqi",e:"You're welcome"},
+  {c:"菜",p:"cài",e:"Dish / vegetable"},
+  {c:"茶",p:"chá",e:"Tea"},
+  {c:"吃",p:"chī",e:"Eat"},
+  {c:"大",p:"dà",e:"Big / large"},
+  {c:"电脑",p:"diànnǎo",e:"Computer"},
+  {c:"电视",p:"diànshì",e:"Television"},
+  {c:"电影",p:"diànyǐng",e:"Film / movie"},
+  {c:"东西",p:"dōngxi",e:"Thing / stuff"},
+  {c:"都",p:"dōu",e:"All / both"},
+  {c:"读",p:"dú",e:"Read"},
+  {c:"对不起",p:"duìbuqǐ",e:"Sorry"},
+  {c:"多",p:"duō",e:"Many / much"},
+  {c:"多少",p:"duōshao",e:"How many / how much"},
+  {c:"二",p:"èr",e:"2"},
+  {c:"飞机",p:"fēijī",e:"Aeroplane"},
+  {c:"分钟",p:"fēnzhōng",e:"Minute"},
+  {c:"高兴",p:"gāoxìng",e:"Happy / pleased"},
+  {c:"个",p:"gè",e:"MW: general"},
+  {c:"工作",p:"gōngzuò",e:"Work / job"},
+  {c:"汉语",p:"Hànyǔ",e:"Chinese language"},
+  {c:"好",p:"hǎo",e:"Good"},
+  {c:"喝",p:"hē",e:"Drink"},
+  {c:"和",p:"hé",e:"And / with"},
+  {c:"很",p:"hěn",e:"Very"},
+  {c:"回",p:"huí",e:"Return / go back"},
+  {c:"会",p:"huì",e:"Can / know how to"},
+  {c:"几",p:"jǐ",e:"How many / several"},
+  {c:"家",p:"jiā",e:"Home / family"},
+  {c:"今天",p:"jīntiān",e:"Today"},
+  {c:"九",p:"jiǔ",e:"9"},
+  {c:"开",p:"kāi",e:"Open / drive"},
+  {c:"看",p:"kàn",e:"Look / watch / read"},
+  {c:"看见",p:"kànjiàn",e:"See / catch sight of"},
+  {c:"来",p:"lái",e:"Come"},
+  {c:"老师",p:"lǎoshī",e:"Teacher"},
+  {c:"了",p:"le",e:"Particle: completed action"},
+  {c:"冷",p:"lěng",e:"Cold"},
+  {c:"六",p:"liù",e:"6"},
+  {c:"妈妈",p:"māma",e:"Mum"},
+  {c:"买",p:"mǎi",e:"Buy"},
+  {c:"没关系",p:"méi guānxi",e:"Never mind / it's fine"},
+  {c:"没有",p:"méiyǒu",e:"Don't have / haven't"},
+  {c:"哪",p:"nǎ",e:"Which"},
+  {c:"那",p:"nà",e:"That"},
+  {c:"呢",p:"ne",e:"Particle: what about...?"},
+  {c:"你",p:"nǐ",e:"You"},
+  {c:"年",p:"nián",e:"Year"},
+  {c:"女儿",p:"nǚ'ér",e:"Daughter"},
+  {c:"朋友",p:"péngyou",e:"Friend"},
+  {c:"钱",p:"qián",e:"Money"},
+  {c:"去",p:"qù",e:"Go"},
+  {c:"热",p:"rè",e:"Hot"},
+  {c:"人",p:"rén",e:"Person / people"},
+  {c:"认识",p:"rènshi",e:"Know / recognise"},
+  {c:"三",p:"sān",e:"3"},
+  {c:"商店",p:"shāngdiàn",e:"Shop / store"},
+  {c:"上午",p:"shàngwǔ",e:"Morning (AM)"},
+  {c:"少",p:"shǎo",e:"Few / little"},
+  {c:"谁",p:"shéi",e:"Who"},
+  {c:"什么",p:"shénme",e:"What"},
+  {c:"十",p:"shí",e:"10"},
+  {c:"时候",p:"shíhou",e:"Time / moment"},
+  {c:"是",p:"shì",e:"Be / is / am / are"},
+  {c:"书",p:"shū",e:"Book"},
+  {c:"水",p:"shuǐ",e:"Water"},
+  {c:"睡觉",p:"shuìjiào",e:"Sleep"},
+  {c:"说",p:"shuō",e:"Say / speak"},
+  {c:"四",p:"sì",e:"4"},
+  {c:"岁",p:"suì",e:"Years old"},
+  {c:"他",p:"tā",e:"He / him"},
+  {c:"她",p:"tā",e:"She / her"},
+  {c:"太",p:"tài",e:"Too / so (excessive)"},
+  {c:"天气",p:"tiānqì",e:"Weather"},
+  {c:"听",p:"tīng",e:"Listen / hear"},
+  {c:"同学",p:"tóngxué",e:"Classmate"},
+  {c:"我",p:"wǒ",e:"I / me"},
+  {c:"我们",p:"wǒmen",e:"We / us"},
+  {c:"五",p:"wǔ",e:"5"},
+  {c:"下午",p:"xiàwǔ",e:"Afternoon"},
+  {c:"先生",p:"xiānsheng",e:"Mr. / sir"},
+  {c:"现在",p:"xiànzài",e:"Now"},
+  {c:"想",p:"xiǎng",e:"Want to / think"},
+  {c:"小",p:"xiǎo",e:"Small / little"},
+  {c:"写",p:"xiě",e:"Write"},
+  {c:"谢谢",p:"xièxie",e:"Thank you"},
+  {c:"星期",p:"xīngqī",e:"Week"},
+  {c:"学生",p:"xuésheng",e:"Student"},
+  {c:"学习",p:"xuéxí",e:"Study / learn"},
+  {c:"一",p:"yī",e:"1"},
+  {c:"一点儿",p:"yīdiǎnr",e:"A little bit"},
+  {c:"衣服",p:"yīfu",e:"Clothes"},
+  {c:"医生",p:"yīshēng",e:"Doctor"},
+  {c:"医院",p:"yīyuàn",e:"Hospital"},
+  {c:"也",p:"yě",e:"Also / too"},
+  {c:"要",p:"yào",e:"Want / need / will"},
+  {c:"有",p:"yǒu",e:"Have / there is"},
+  {c:"再见",p:"zàijiàn",e:"Goodbye"},
+  {c:"在",p:"zài",e:"At / in / be at"},
+  {c:"怎么",p:"zěnme",e:"How / why"},
+  {c:"这",p:"zhè",e:"This"},
+  {c:"中国",p:"Zhōngguó",e:"China"},
+  {c:"中午",p:"zhōngwǔ",e:"Noon"},
+  {c:"住",p:"zhù",e:"Live / stay"},
+  {c:"坐",p:"zuò",e:"Sit / take (transport)"},
+  {c:"做",p:"zuò",e:"Do / make"},
+],
+2:[
+  {c:"吧",p:"ba",e:"Particle: suggestion / confirmation"},
+  {c:"白",p:"bái",e:"White"},
+  {c:"百",p:"bǎi",e:"Hundred"},
+  {c:"帮助",p:"bāngzhù",e:"Help / assist"},
+  {c:"报纸",p:"bàozhǐ",e:"Newspaper"},
+  {c:"比",p:"bǐ",e:"Compare / than"},
+  {c:"别",p:"bié",e:"Don't / other"},
+  {c:"宾馆",p:"bīnguǎn",e:"Hotel"},
+  {c:"长",p:"cháng",e:"Long"},
+  {c:"唱歌",p:"chànggē",e:"Sing (a song)"},
+  {c:"出",p:"chū",e:"Exit / go out"},
+  {c:"穿",p:"chuān",e:"Wear / put on"},
+  {c:"从",p:"cóng",e:"From"},
+  {c:"错",p:"cuò",e:"Wrong / mistake"},
+  {c:"打电话",p:"dǎ diànhuà",e:"Make a phone call"},
+  {c:"大家",p:"dàjiā",e:"Everyone"},
+  {c:"但是",p:"dànshì",e:"But / however"},
+  {c:"地方",p:"dìfang",e:"Place"},
+  {c:"弟弟",p:"dìdi",e:"Younger brother"},
+  {c:"第一",p:"dì yī",e:"First"},
+  {c:"懂",p:"dǒng",e:"Understand"},
+  {c:"对",p:"duì",e:"Correct / right"},
+  {c:"房间",p:"fángjiān",e:"Room"},
+  {c:"非常",p:"fēicháng",e:"Extremely / very much"},
+  {c:"服务员",p:"fúwùyuán",e:"Waiter / staff"},
+  {c:"告诉",p:"gàosu",e:"Tell"},
+  {c:"哥哥",p:"gēge",e:"Elder brother"},
+  {c:"高",p:"gāo",e:"Tall / high"},
+  {c:"贵",p:"guì",e:"Expensive"},
+  {c:"过",p:"guò",e:"Pass / cross / (exp. particle)"},
+  {c:"还",p:"hái",e:"Still / also / yet"},
+  {c:"孩子",p:"háizi",e:"Child"},
+  {c:"好吃",p:"hǎochī",e:"Delicious"},
+  {c:"黑",p:"hēi",e:"Black"},
+  {c:"红",p:"hóng",e:"Red"},
+  {c:"火车站",p:"huǒchē zhàn",e:"Train station"},
+  {c:"机场",p:"jīchǎng",e:"Airport"},
+  {c:"鸡蛋",p:"jīdàn",e:"Egg"},
+  {c:"件",p:"jiàn",e:"MW: clothes / matters"},
+  {c:"教室",p:"jiàoshì",e:"Classroom"},
+  {c:"姐姐",p:"jiějie",e:"Elder sister"},
+  {c:"介绍",p:"jièshào",e:"Introduce"},
+  {c:"进",p:"jìn",e:"Enter / go in"},
+  {c:"近",p:"jìn",e:"Near / close"},
+  {c:"就",p:"jiù",e:"Just / then / exactly"},
+  {c:"觉得",p:"juéde",e:"Feel / think"},
+  {c:"咖啡",p:"kāfēi",e:"Coffee"},
+  {c:"开始",p:"kāishǐ",e:"Start / begin"},
+  {c:"可能",p:"kěnéng",e:"Maybe / possible"},
+  {c:"可以",p:"kěyǐ",e:"Can / may / allowed to"},
+  {c:"块",p:"kuài",e:"Yuan (spoken) / MW: piece"},
+  {c:"快",p:"kuài",e:"Fast / quick"},
+  {c:"快乐",p:"kuàilè",e:"Happy / joyful"},
+  {c:"累",p:"lèi",e:"Tired"},
+  {c:"离",p:"lí",e:"Away from / distance"},
+  {c:"两",p:"liǎng",e:"Two (of something)"},
+  {c:"零",p:"líng",e:"Zero"},
+  {c:"路",p:"lù",e:"Road / route"},
+  {c:"旅游",p:"lǚyóu",e:"Travel / tourism"},
+  {c:"妹妹",p:"mèimei",e:"Younger sister"},
+  {c:"门",p:"mén",e:"Door / gate"},
+  {c:"男",p:"nán",e:"Male / man"},
+  {c:"您",p:"nín",e:"You (polite)"},
+  {c:"女",p:"nǚ",e:"Female / woman"},
+  {c:"旁边",p:"pángbiān",e:"Beside / next to"},
+  {c:"跑步",p:"pǎobù",e:"Run / jog"},
+  {c:"便宜",p:"piányí",e:"Cheap / inexpensive"},
+  {c:"漂亮",p:"piàoliang",e:"Pretty / beautiful"},
+  {c:"苹果",p:"píngguǒ",e:"Apple"},
+  {c:"起床",p:"qǐchuáng",e:"Get up"},
+  {c:"千",p:"qiān",e:"Thousand"},
+  {c:"请",p:"qǐng",e:"Please / invite"},
+  {c:"让",p:"ràng",e:"Let / allow / make"},
+  {c:"日",p:"rì",e:"Day / sun"},
+  {c:"如果",p:"rúguǒ",e:"If"},
+  {c:"身体",p:"shēntǐ",e:"Body / health"},
+  {c:"生病",p:"shēngbìng",e:"Get sick / be ill"},
+  {c:"生日",p:"shēngrì",e:"Birthday"},
+  {c:"时间",p:"shíjiān",e:"Time"},
+  {c:"事情",p:"shìqing",e:"Matter / thing / affair"},
+  {c:"手",p:"shǒu",e:"Hand"},
+  {c:"手机",p:"shǒujī",e:"Mobile phone"},
+  {c:"送",p:"sòng",e:"Give / send / see off"},
+  {c:"虽然",p:"suīrán",e:"Although"},
+  {c:"它",p:"tā",e:"It"},
+  {c:"踢足球",p:"tī zúqiú",e:"Play football"},
+  {c:"跳舞",p:"tiàowǔ",e:"Dance"},
+  {c:"玩",p:"wán",e:"Play / have fun"},
+  {c:"万",p:"wàn",e:"10,000"},
+  {c:"为什么",p:"wèishénme",e:"Why"},
+  {c:"问",p:"wèn",e:"Ask"},
+  {c:"问题",p:"wèntí",e:"Question / problem"},
+  {c:"希望",p:"xīwàng",e:"Hope / wish"},
+  {c:"洗",p:"xǐ",e:"Wash"},
+  {c:"小时",p:"xiǎoshí",e:"Hour"},
+  {c:"笑",p:"xiào",e:"Laugh / smile"},
+  {c:"新",p:"xīn",e:"New"},
+  {c:"姓",p:"xìng",e:"Surname"},
+  {c:"休息",p:"xiūxi",e:"Rest"},
+  {c:"雪",p:"xuě",e:"Snow"},
+  {c:"颜色",p:"yánsè",e:"Colour"},
+  {c:"眼睛",p:"yǎnjing",e:"Eye"},
+  {c:"已经",p:"yǐjīng",e:"Already"},
+  {c:"以前",p:"yǐqián",e:"Before / in the past"},
+  {c:"一起",p:"yīqǐ",e:"Together"},
+  {c:"意思",p:"yìsi",e:"Meaning / interesting"},
+  {c:"因为",p:"yīnwèi",e:"Because"},
+  {c:"用",p:"yòng",e:"Use"},
+  {c:"游泳",p:"yóuyǒng",e:"Swim"},
+  {c:"右边",p:"yòubiān",e:"Right side"},
+  {c:"语言",p:"yǔyán",e:"Language"},
+  {c:"元",p:"yuán",e:"Yuan (formal)"},
+  {c:"远",p:"yuǎn",e:"Far"},
+  {c:"运动",p:"yùndòng",e:"Exercise / sport"},
+  {c:"再",p:"zài",e:"Again / then"},
+  {c:"早上",p:"zǎoshang",e:"Morning (early)"},
+  {c:"怎么样",p:"zěnmeyàng",e:"How about it / what's it like"},
+  {c:"丈夫",p:"zhàngfu",e:"Husband"},
+  {c:"找",p:"zhǎo",e:"Look for / find"},
+  {c:"着",p:"zhe",e:"Particle: ongoing state"},
+  {c:"真",p:"zhēn",e:"Real / truly"},
+  {c:"正在",p:"zhèngzài",e:"In the process of"},
+  {c:"知道",p:"zhīdào",e:"Know"},
+  {c:"准备",p:"zhǔnbèi",e:"Prepare / plan to"},
+  {c:"走",p:"zǒu",e:"Walk / go / leave"},
+  {c:"最",p:"zuì",e:"Most / -est"},
+  {c:"左边",p:"zuǒbiān",e:"Left side"},
+  {c:"作业",p:"zuòyè",e:"Homework"},
+],
+3:[
+  {c:"阿姨",p:"āyí",e:"Aunt / auntie"},
+  {c:"啊",p:"a",e:"Particle: ah / oh"},
+  {c:"矮",p:"ǎi",e:"Short (height)"},
+  {c:"爱好",p:"àihào",e:"Hobby / interest"},
+  {c:"安静",p:"ānjìng",e:"Quiet"},
+  {c:"把",p:"bǎ",e:"MW for handles; disposal particle"},
+  {c:"被",p:"bèi",e:"Passive particle: by"},
+  {c:"鼻子",p:"bízi",e:"Nose"},
+  {c:"必须",p:"bìxū",e:"Must / have to"},
+  {c:"变化",p:"biànhuà",e:"Change"},
+  {c:"冰箱",p:"bīngxiāng",e:"Refrigerator"},
+  {c:"不但",p:"bùdàn",e:"Not only"},
+  {c:"菜单",p:"càidān",e:"Menu"},
+  {c:"参加",p:"cānjiā",e:"Participate / join"},
+  {c:"草",p:"cǎo",e:"Grass"},
+  {c:"层",p:"céng",e:"Floor / layer"},
+  {c:"差",p:"chà",e:"Differ / not good"},
+  {c:"超市",p:"chāoshì",e:"Supermarket"},
+  {c:"衬衫",p:"chènshān",e:"Shirt"},
+  {c:"城市",p:"chéngshì",e:"City"},
+  {c:"迟到",p:"chídào",e:"Be late"},
+  {c:"除了",p:"chúle",e:"Except for / besides"},
+  {c:"船",p:"chuán",e:"Boat / ship"},
+  {c:"词语",p:"cíyǔ",e:"Word / phrase"},
+  {c:"打算",p:"dǎsuàn",e:"Plan to / intend"},
+  {c:"担心",p:"dānxīn",e:"Worry / be concerned"},
+  {c:"地",p:"de/dì",e:"Adverb particle / ground"},
+  {c:"得",p:"de/děi",e:"Structural particle / must"},
+  {c:"地铁",p:"dìtiě",e:"Metro / subway"},
+  {c:"地图",p:"dìtú",e:"Map"},
+  {c:"电梯",p:"diàntī",e:"Lift / elevator"},
+  {c:"东",p:"dōng",e:"East"},
+  {c:"发现",p:"fāxiàn",e:"Discover / find out"},
+  {c:"方便",p:"fāngbiàn",e:"Convenient"},
+  {c:"放",p:"fàng",e:"Put / place / release"},
+  {c:"分",p:"fēn",e:"Minute / cent / divide"},
+  {c:"服务",p:"fúwù",e:"Service"},
+  {c:"附近",p:"fùjìn",e:"Nearby / in the vicinity"},
+  {c:"感觉",p:"gǎnjué",e:"Feel / feeling"},
+  {c:"感谢",p:"gǎnxiè",e:"Grateful / thank"},
+  {c:"刚才",p:"gāngcái",e:"Just now"},
+  {c:"更",p:"gèng",e:"Even more"},
+  {c:"关",p:"guān",e:"Close / shut"},
+  {c:"关心",p:"guānxīn",e:"Care about"},
+  {c:"关系",p:"guānxi",e:"Relationship"},
+  {c:"国",p:"guó",e:"Country"},
+  {c:"过去",p:"guòqù",e:"Past / go over"},
+  {c:"还是",p:"háishi",e:"Or / still"},
+  {c:"黑板",p:"hēibǎn",e:"Blackboard"},
+  {c:"护照",p:"hùzhào",e:"Passport"},
+  {c:"花",p:"huā",e:"Flower / spend"},
+  {c:"画",p:"huà",e:"Draw / painting"},
+  {c:"坏",p:"huài",e:"Bad / broken"},
+  {c:"换",p:"huàn",e:"Exchange / change"},
+  {c:"环境",p:"huánjìng",e:"Environment"},
+  {c:"还",p:"huán",e:"Return / give back"},
+  {c:"回答",p:"huídá",e:"Answer / reply"},
+  {c:"会议",p:"huìyì",e:"Meeting"},
+  {c:"活动",p:"huódòng",e:"Activity"},
+  {c:"火",p:"huǒ",e:"Fire"},
+  {c:"机会",p:"jīhuì",e:"Opportunity / chance"},
+  {c:"极",p:"jí",e:"Extremely / pole"},
+  {c:"记得",p:"jìde",e:"Remember"},
+  {c:"季节",p:"jìjié",e:"Season"},
+  {c:"简单",p:"jiǎndān",e:"Simple / easy"},
+  {c:"检查",p:"jiǎnchá",e:"Check / inspect"},
+  {c:"健康",p:"jiànkāng",e:"Health / healthy"},
+  {c:"讲",p:"jiǎng",e:"Speak / explain"},
+  {c:"脚",p:"jiǎo",e:"Foot"},
+  {c:"教",p:"jiāo",e:"Teach"},
+  {c:"接",p:"jiē",e:"Receive / pick up"},
+  {c:"节目",p:"jiémù",e:"Programme"},
+  {c:"节日",p:"jiérì",e:"Festival"},
+  {c:"结束",p:"jiéshù",e:"End / finish"},
+  {c:"解决",p:"jiějué",e:"Solve / resolve"},
+  {c:"借",p:"jiè",e:"Borrow / lend"},
+  {c:"经常",p:"jīngcháng",e:"Often / frequently"},
+  {c:"经过",p:"jīngguò",e:"Pass by / go through"},
+  {c:"经济",p:"jīngjì",e:"Economy"},
+  {c:"久",p:"jiǔ",e:"Long (time)"},
+  {c:"旧",p:"jiù",e:"Old / used"},
+  {c:"举行",p:"jǔxíng",e:"Hold (an event)"},
+  {c:"决定",p:"juédìng",e:"Decide"},
+  {c:"渴",p:"kě",e:"Thirsty"},
+  {c:"刻",p:"kè",e:"Quarter (hour)"},
+  {c:"客人",p:"kèrén",e:"Guest / visitor"},
+  {c:"课",p:"kè",e:"Class / lesson"},
+  {c:"空调",p:"kōngtiáo",e:"Air conditioning"},
+  {c:"口",p:"kǒu",e:"Mouth / MW for family members"},
+  {c:"块",p:"kuài",e:"Yuan (spoken)"},
+  {c:"裤子",p:"kùzi",e:"Trousers"},
+  {c:"来不及",p:"lái bu jí",e:"Too late to do"},
+  {c:"来自",p:"láizì",e:"Come from"},
+  {c:"礼物",p:"lǐwù",e:"Gift"},
+  {c:"历史",p:"lìshǐ",e:"History"},
+  {c:"联系",p:"liánxì",e:"Contact / get in touch"},
+  {c:"两",p:"liǎng",e:"Two / a couple of"},
+  {c:"了解",p:"liǎojiě",e:"Understand / know about"},
+  {c:"邻居",p:"línjū",e:"Neighbour"},
+  {c:"楼",p:"lóu",e:"Building / floor"},
+  {c:"马",p:"mǎ",e:"Horse"},
+  {c:"满意",p:"mǎnyì",e:"Satisfied"},
+  {c:"帽子",p:"màozi",e:"Hat"},
+  {c:"面条",p:"miàntiáo",e:"Noodles"},
+  {c:"明白",p:"míngbái",e:"Understand / clear"},
+  {c:"牛奶",p:"niúnǎi",e:"Milk"},
+  {c:"努力",p:"nǔlì",e:"Work hard / effort"},
+  {c:"爬山",p:"pá shān",e:"Climb a mountain"},
+  {c:"盘子",p:"pánzi",e:"Plate / dish"},
+  {c:"啤酒",p:"píjiǔ",e:"Beer"},
+  {c:"其实",p:"qíshí",e:"Actually / in fact"},
+  {c:"其他",p:"qítā",e:"Other"},
+  {c:"铅笔",p:"qiānbǐ",e:"Pencil"},
+  {c:"清楚",p:"qīngchǔ",e:"Clear"},
+  {c:"请假",p:"qǐngjià",e:"Ask for leave"},
+  {c:"秋",p:"qiū",e:"Autumn"},
+  {c:"裙子",p:"qúnzi",e:"Skirt"},
+  {c:"然后",p:"ránhòu",e:"Then / after that"},
+  {c:"热情",p:"rèqíng",e:"Enthusiastic / warm"},
+  {c:"认为",p:"rènwéi",e:"Think / believe"},
+  {c:"容易",p:"róngyì",e:"Easy"},
+  {c:"如果",p:"rúguǒ",e:"If"},
+  {c:"伞",p:"sǎn",e:"Umbrella"},
+  {c:"上班",p:"shàngbān",e:"Go to work"},
+  {c:"生气",p:"shēngqì",e:"Angry"},
+  {c:"声音",p:"shēngyīn",e:"Sound / voice"},
+  {c:"使",p:"shǐ",e:"Make / cause / use"},
+  {c:"世界",p:"shìjiè",e:"World"},
+  {c:"瘦",p:"shòu",e:"Thin / slim"},
+  {c:"叔叔",p:"shūshu",e:"Uncle"},
+  {c:"树",p:"shù",e:"Tree"},
+  {c:"数学",p:"shùxué",e:"Mathematics"},
+  {c:"双",p:"shuāng",e:"Pair / MW: pair"},
+  {c:"所以",p:"suǒyǐ",e:"Therefore / so"},
+  {c:"它们",p:"tāmen",e:"They (objects/animals)"},
+  {c:"抬",p:"tái",e:"Lift / raise"},
+  {c:"特别",p:"tèbié",e:"Special / especially"},
+  {c:"提",p:"tí",e:"Carry / raise / mention"},
+  {c:"甜",p:"tián",e:"Sweet"},
+  {c:"条",p:"tiáo",e:"MW: strip / long objects"},
+  {c:"同事",p:"tóngshì",e:"Colleague"},
+  {c:"头",p:"tóu",e:"Head"},
+  {c:"突然",p:"tūrán",e:"Suddenly"},
+  {c:"腿",p:"tuǐ",e:"Leg"},
+  {c:"完成",p:"wánchéng",e:"Complete / finish"},
+  {c:"忘记",p:"wàngjì",e:"Forget"},
+  {c:"为了",p:"wèile",e:"In order to"},
+  {c:"位",p:"wèi",e:"MW: people (polite)"},
+  {c:"文化",p:"wénhuà",e:"Culture"},
+  {c:"西",p:"xī",e:"West"},
+  {c:"习惯",p:"xíguàn",e:"Habit / be used to"},
+  {c:"夏",p:"xià",e:"Summer"},
+  {c:"校长",p:"xiàozhǎng",e:"Headteacher"},
+  {c:"辛苦",p:"xīnkǔ",e:"Hardworking / hard"},
+  {c:"行李箱",p:"xínglixiāng",e:"Suitcase"},
+  {c:"熊猫",p:"xióngmāo",e:"Giant panda"},
+  {c:"选择",p:"xuǎnzé",e:"Choose"},
+  {c:"要求",p:"yāoqiú",e:"Require / demand"},
+  {c:"一定",p:"yīdìng",e:"Certainly / must"},
+  {c:"一共",p:"yīgòng",e:"Altogether"},
+  {c:"以后",p:"yǐhòu",e:"After / later"},
+  {c:"一会儿",p:"yīhuìr",e:"A moment"},
+  {c:"音乐",p:"yīnyuè",e:"Music"},
+  {c:"银行",p:"yínháng",e:"Bank"},
+  {c:"饮料",p:"yǐnliào",e:"Drink / beverage"},
+  {c:"有名",p:"yǒumíng",e:"Famous"},
+  {c:"又",p:"yòu",e:"Again / also"},
+  {c:"鱼",p:"yú",e:"Fish"},
+  {c:"月",p:"yuè",e:"Month / moon"},
+  {c:"站",p:"zhàn",e:"Stand / station / stop"},
+  {c:"照顾",p:"zhàogù",e:"Take care of"},
+  {c:"照片",p:"zhàopiàn",e:"Photograph"},
+  {c:"只",p:"zhǐ",e:"Only / just"},
+  {c:"终于",p:"zhōngyú",e:"Finally / at last"},
+  {c:"重要",p:"zhòngyào",e:"Important"},
+  {c:"主要",p:"zhǔyào",e:"Main / major"},
+  {c:"注意",p:"zhùyì",e:"Pay attention to"},
+  {c:"字",p:"zì",e:"Character / word"},
+  {c:"自己",p:"zìjǐ",e:"Oneself"},
+  {c:"总是",p:"zǒngshì",e:"Always"},
+  {c:"最近",p:"zuìjìn",e:"Recently"},
+  {c:"作",p:"zuò",e:"Work / compose"},
+],
+4:[
+  {c:"按时",p:"ànshí",e:"On time"},
+  {c:"安排",p:"ānpái",e:"Arrange / plan"},
+  {c:"包括",p:"bāokuò",e:"Include"},
+  {c:"保护",p:"bǎohù",e:"Protect"},
+  {c:"保证",p:"bǎozhèng",e:"Guarantee"},
+  {c:"比较",p:"bǐjiào",e:"Compare / relatively"},
+  {c:"毕业",p:"bìyè",e:"Graduate"},
+  {c:"表示",p:"biǎoshì",e:"Express / indicate"},
+  {c:"表演",p:"biǎoyǎn",e:"Perform"},
+  {c:"表扬",p:"biǎoyáng",e:"Praise"},
+  {c:"不得不",p:"bùdébù",e:"Have no choice but to"},
+  {c:"不管",p:"bùguǎn",e:"No matter / regardless"},
+  {c:"不仅",p:"bùjǐn",e:"Not only"},
+  {c:"步骤",p:"bùzhòu",e:"Step / procedure"},
+  {c:"成功",p:"chénggōng",e:"Succeed"},
+  {c:"乘坐",p:"chéngzuò",e:"Ride / travel by"},
+  {c:"出发",p:"chūfā",e:"Depart / set out"},
+  {c:"存",p:"cún",e:"Save / store"},
+  {c:"打折",p:"dǎzhé",e:"Discount"},
+  {c:"代表",p:"dàibiǎo",e:"Represent / representative"},
+  {c:"当时",p:"dāngshí",e:"At that time"},
+  {c:"到处",p:"dàochù",e:"Everywhere"},
+  {c:"道歉",p:"dàoqiàn",e:"Apologise"},
+  {c:"灯",p:"dēng",e:"Light / lamp"},
+  {c:"地球",p:"dìqiú",e:"Earth"},
+  {c:"调查",p:"diàochá",e:"Investigate"},
+  {c:"动作",p:"dòngzuò",e:"Movement / action"},
+  {c:"堵车",p:"dǔ chē",e:"Traffic jam"},
+  {c:"对于",p:"duìyú",e:"Regarding / as for"},
+  {c:"发展",p:"fāzhǎn",e:"Develop"},
+  {c:"方面",p:"fāngmiàn",e:"Aspect"},
+  {c:"否则",p:"fǒuzé",e:"Otherwise"},
+  {c:"复杂",p:"fùzá",e:"Complex / complicated"},
+  {c:"感动",p:"gǎndòng",e:"Move (emotionally)"},
+  {c:"各",p:"gè",e:"Each / various"},
+  {c:"根据",p:"gēnjù",e:"According to / based on"},
+  {c:"工资",p:"gōngzī",e:"Salary / wages"},
+  {c:"估计",p:"gūjì",e:"Estimate / reckon"},
+  {c:"故意",p:"gùyì",e:"On purpose / deliberately"},
+  {c:"挂",p:"guà",e:"Hang"},
+  {c:"观众",p:"guānzhòng",e:"Audience"},
+  {c:"合适",p:"héshì",e:"Suitable / appropriate"},
+  {c:"互联网",p:"hùliánwǎng",e:"Internet"},
+  {c:"互相",p:"hùxiāng",e:"Each other / mutually"},
+  {c:"获得",p:"huòdé",e:"Obtain / achieve"},
+  {c:"积极",p:"jījí",e:"Positive / proactive"},
+  {c:"及时",p:"jíshí",e:"In time / promptly"},
+  {c:"即使",p:"jíshǐ",e:"Even if"},
+  {c:"记者",p:"jìzhě",e:"Journalist"},
+  {c:"价格",p:"jiàgé",e:"Price"},
+  {c:"坚持",p:"jiānchí",e:"Persist / stick to"},
+  {c:"建议",p:"jiànyì",e:"Suggest / suggestion"},
+  {c:"将来",p:"jiānglái",e:"Future"},
+  {c:"奖金",p:"jiǎngjīn",e:"Bonus"},
+  {c:"竟然",p:"jìngrán",e:"Unexpectedly / to one's surprise"},
+  {c:"举",p:"jǔ",e:"Lift / give (example)"},
+  {c:"开心",p:"kāixīn",e:"Happy"},
+  {c:"考虑",p:"kǎolǜ",e:"Consider"},
+  {c:"可是",p:"kěshì",e:"But / however"},
+  {c:"克服",p:"kèfú",e:"Overcome"},
+  {c:"来不及",p:"lái bu jí",e:"No time / too late"},
+  {c:"来得及",p:"lái de jí",e:"There's time / not too late"},
+  {c:"利用",p:"lìyòng",e:"Use / make use of"},
+  {c:"另外",p:"lìngwài",e:"Additionally / besides"},
+  {c:"麻烦",p:"máfan",e:"Trouble / troublesome"},
+  {c:"满",p:"mǎn",e:"Full"},
+  {c:"没想到",p:"méi xiǎngdào",e:"Unexpectedly"},
+  {c:"目的",p:"mùdì",e:"Purpose / aim"},
+  {c:"难道",p:"nándào",e:"Could it be that...?"},
+  {c:"耐心",p:"nàixīn",e:"Patient"},
+  {c:"年龄",p:"niánlíng",e:"Age"},
+  {c:"平时",p:"píngshí",e:"Normally / usually"},
+  {c:"其中",p:"qízhōng",e:"Among them"},
+  {c:"轻松",p:"qīngsōng",e:"Relaxed / at ease"},
+  {c:"取消",p:"qǔxiāo",e:"Cancel"},
+  {c:"确实",p:"quèshí",e:"Indeed / really"},
+  {c:"缺少",p:"quēshǎo",e:"Lack"},
+  {c:"生活",p:"shēnghuó",e:"Life / live"},
+  {c:"实际上",p:"shíjìshàng",e:"In fact / actually"},
+  {c:"首先",p:"shǒuxiān",e:"First of all"},
+  {c:"顺利",p:"shùnlì",e:"Smooth / successful"},
+  {c:"虽然",p:"suīrán",e:"Although"},
+  {c:"提供",p:"tígōng",e:"Provide"},
+  {c:"通过",p:"tōngguò",e:"Through / by means of"},
+  {c:"推",p:"tuī",e:"Push"},
+  {c:"微博",p:"wēibó",e:"Microblog / Weibo"},
+  {c:"相反",p:"xiāngfǎn",e:"Opposite"},
+  {c:"相同",p:"xiāngtóng",e:"Same / identical"},
+  {c:"响",p:"xiǎng",e:"Ring / sound"},
+  {c:"幸福",p:"xìngfú",e:"Happy / happiness"},
+  {c:"性格",p:"xìnggé",e:"Personality"},
+  {c:"需要",p:"xūyào",e:"Need"},
+  {c:"延误",p:"yánwù",e:"Delay"},
+  {c:"严重",p:"yánzhòng",e:"Serious / severe"},
+  {c:"研究",p:"yánjiū",e:"Research"},
+  {c:"演出",p:"yǎnchū",e:"Performance / show"},
+  {c:"一旦",p:"yīdàn",e:"Once / as soon as"},
+  {c:"以为",p:"yǐwéi",e:"Think (mistakenly)"},
+  {c:"影响",p:"yǐngxiǎng",e:"Influence"},
+  {c:"优秀",p:"yōuxiù",e:"Excellent"},
+  {c:"重",p:"zhòng",e:"Heavy"},
+  {c:"周围",p:"zhōuwéi",e:"Surroundings"},
+  {c:"主动",p:"zhǔdòng",e:"Take initiative"},
+  {c:"祝贺",p:"zhùhè",e:"Congratulate"},
+  {c:"自然",p:"zìrán",e:"Nature / natural"},
+  {c:"遵守",p:"zūnshǒu",e:"Abide by / observe"},
+],
+5:[
+  {c:"爱护",p:"àihù",e:"Take care of / cherish"},
+  {c:"按照",p:"ànzhào",e:"According to"},
+  {c:"摆",p:"bǎi",e:"Place / arrange"},
+  {c:"办理",p:"bànlǐ",e:"Handle / manage"},
+  {c:"包含",p:"bāohán",e:"Contain / include"},
+  {c:"抱怨",p:"bàoyuàn",e:"Complain"},
+  {c:"背景",p:"bèijǐng",e:"Background"},
+  {c:"必要",p:"bìyào",e:"Necessary"},
+  {c:"避免",p:"bìmiǎn",e:"Avoid"},
+  {c:"彼此",p:"bǐcǐ",e:"Each other"},
+  {c:"标准",p:"biāozhǔn",e:"Standard / criterion"},
+  {c:"不断",p:"búduàn",e:"Continuously"},
+  {c:"不得了",p:"bùdéliǎo",e:"Terrible / extreme"},
+  {c:"财富",p:"cáifù",e:"Wealth"},
+  {c:"产品",p:"chǎnpǐn",e:"Product"},
+  {c:"长途",p:"chángtú",e:"Long distance"},
+  {c:"承认",p:"chéngrèn",e:"Admit"},
+  {c:"吃惊",p:"chī jīng",e:"Surprised / shocked"},
+  {c:"充分",p:"chōngfèn",e:"Sufficient / full"},
+  {c:"创造",p:"chuàngzào",e:"Create"},
+  {c:"此外",p:"cǐwài",e:"Moreover / besides"},
+  {c:"聪明",p:"cōngmíng",e:"Clever / smart"},
+  {c:"从而",p:"cóng'ér",e:"Thus / as a result"},
+  {c:"存在",p:"cúnzài",e:"Exist"},
+  {c:"当然",p:"dāngrán",e:"Of course / naturally"},
+  {c:"道理",p:"dàolǐ",e:"Reason / logic"},
+  {c:"等待",p:"děngdài",e:"Wait for"},
+  {c:"地位",p:"dìwèi",e:"Status / position"},
+  {c:"独立",p:"dúlì",e:"Independent"},
+  {c:"对比",p:"duìbǐ",e:"Contrast / compare"},
+  {c:"对象",p:"duìxiàng",e:"Object / partner"},
+  {c:"反对",p:"fǎnduì",e:"Oppose"},
+  {c:"方式",p:"fāngshì",e:"Method / way"},
+  {c:"丰富",p:"fēngfù",e:"Rich / abundant"},
+  {c:"负责",p:"fùzé",e:"Responsible"},
+  {c:"改变",p:"gǎibiàn",e:"Change"},
+  {c:"个人",p:"gèrén",e:"Individual / personal"},
+  {c:"宫殿",p:"gōngdiàn",e:"Palace"},
+  {c:"观点",p:"guāndiǎn",e:"Point of view"},
+  {c:"过分",p:"guòfèn",e:"Excessive"},
+  {c:"合理",p:"hélǐ",e:"Reasonable"},
+  {c:"宏伟",p:"hóngwěi",e:"Grand / magnificent"},
+  {c:"吸引",p:"xīyǐn",e:"Attract"},
+  {c:"系统",p:"xìtǒng",e:"System"},
+  {c:"现代",p:"xiàndài",e:"Modern"},
+  {c:"消费",p:"xiāofèi",e:"Consume / consumption"},
+  {c:"信任",p:"xìnrèn",e:"Trust"},
+  {c:"幸运",p:"xìngyùn",e:"Lucky"},
+  {c:"选手",p:"xuǎnshǒu",e:"Competitor / player"},
+  {c:"延伸",p:"yánshēn",e:"Extend"},
+  {c:"养成",p:"yǎngchéng",e:"Develop (habit)"},
+  {c:"依然",p:"yīrán",e:"Still / as before"},
+  {c:"意义",p:"yìyì",e:"Meaning / significance"},
+  {c:"尽管",p:"jǐnguǎn",e:"Although / despite"},
+  {c:"精彩",p:"jīngcǎi",e:"Wonderful / brilliant"},
+  {c:"竞争",p:"jìngzhēng",e:"Compete"},
+  {c:"决心",p:"juéxīn",e:"Determination"},
+  {c:"逐渐",p:"zhújiàn",e:"Gradually"},
+  {c:"总结",p:"zǒngjié",e:"Summarise"},
+  {c:"最终",p:"zuìzhōng",e:"Finally / ultimately"},
+],
+};
+const HSK_GRAMMAR={
+1:[
+  {p:"S + 是 + N",ex:"我是爱尔兰人",py:"wǒ shì Ài'ěrlán rén",en:"I am Irish",note:"To be: identity"},
+  {p:"S + 有 + N",ex:"我有护照",py:"wǒ yǒu hùzhào",en:"I have a passport",note:"To have: possession"},
+  {p:"S + 很 + Adj",ex:"今天很热",py:"jīntiān hěn rè",en:"Today is very hot",note:"Adjective predicate"},
+  {p:"S + 去/来 + Place",ex:"我去机场",py:"wǒ qù jīchǎng",en:"I go to the airport",note:"Simple movement"},
+  {p:"S + 不 + V",ex:"我不吃肉",py:"wǒ bù chī ròu",en:"I don't eat meat",note:"Negation with 不"},
+  {p:"...吗?",ex:"你是学生吗？",py:"nǐ shì xuésheng ma?",en:"Are you a student?",note:"Yes/no question"},
+],
+2:[
+  {p:"S + 想 + V",ex:"我想去成都",py:"wǒ xiǎng qù Chéngdū",en:"I want to go to Chengdu",note:"Expressing desires"},
+  {p:"S + 觉得 + ...",ex:"我觉得很好吃",py:"wǒ juéde hěn hǎochī",en:"I think it's delicious",note:"Expressing opinion"},
+  {p:"S + 喜欢 + V/N",ex:"我喜欢喝茶",py:"wǒ xǐhuān hē chá",en:"I like drinking tea",note:"Expressing likes"},
+  {p:"时间 + 以前/以后",ex:"吃饭以前洗手",py:"chīfàn yǐqián xǐshǒu",en:"Wash hands before eating",note:"Before and after"},
+  {p:"虽然...但是...",ex:"虽然辣，但是好吃",py:"suīrán là, dànshì hǎochī",en:"Although spicy, it's delicious",note:"Concession"},
+  {p:"除了...还...",ex:"除了汉语，她还学英语",py:"chúle Hànyǔ, tā hái xué Yīngyǔ",en:"Besides Chinese, she also studies English",note:"Besides...also"},
+],
+3:[
+  {p:"S + 把 + O + V + complement",ex:"我把行李放在这里",py:"wǒ bǎ xíngli fàng zài zhèlǐ",en:"I put the luggage here",note:"把 disposal construction"},
+  {p:"S + 被 + agent + V",ex:"我的钱包被偷了",py:"wǒ de qiánbāo bèi tōu le",en:"My wallet was stolen",note:"被 passive construction"},
+  {p:"不但...而且...",ex:"她不但会说中文，而且会写",py:"tā bùdàn huì shuō Zhōngwén, érqiě huì xiě",en:"She not only speaks Chinese but also writes it",note:"Not only...but also"},
+  {p:"只有...才...",ex:"只有努力，才能成功",py:"zhǐyǒu nǔlì, cái néng chénggōng",en:"Only by working hard can you succeed",note:"Only if...then"},
+  {p:"越来越 + Adj",ex:"我的中文越来越好",py:"wǒ de Zhōngwén yuèláiyuè hǎo",en:"My Chinese is getting better and better",note:"More and more"},
+  {p:"S + 对 + N + 感兴趣",ex:"我对中国文化感兴趣",py:"wǒ duì Zhōngguó wénhuà gǎn xìngqù",en:"I'm interested in Chinese culture",note:"Expressing interest"},
+],
+4:[
+  {p:"S + 通过 + N + V",ex:"通过练习，我进步了很多",py:"tōngguò liànxí, wǒ jìnbù le hěn duō",en:"Through practice, I improved a lot",note:"By means of / through"},
+  {p:"S + 随着 + N + V",ex:"随着技术发展，生活更方便",py:"suízhe jìshù fāzhǎn, shēnghuó gèng fāngbiàn",en:"As technology develops, life is more convenient",note:"As / along with"},
+  {p:"S + 对...来说",ex:"对我来说，学中文很重要",py:"duì wǒ lái shuō, xué Zhōngwén hěn zhòngyào",en:"For me, learning Chinese is important",note:"From someone's perspective"},
+  {p:"即使...也...",ex:"即使很难，我也要学",py:"jíshǐ hěn nán, wǒ yě yào xué",en:"Even if it's hard, I'll still learn",note:"Even if...still"},
+  {p:"S + 不得不 + V",ex:"我不得不提前离开",py:"wǒ bùdébù tíqián líkāi",en:"I had no choice but to leave early",note:"Have no choice but to"},
+  {p:"尽管...还是...",ex:"尽管很贵，他还是买了",py:"jǐnguǎn hěn guì, tā háishi mǎi le",en:"Despite being expensive, he bought it",note:"Despite...still"},
+],
+5:[
+  {p:"由于...因此...",ex:"由于天气原因，航班取消了",py:"yóuyú tiānqì yuányīn, hángbān qǔxiāo le",en:"Due to weather, the flight was cancelled",note:"Due to...therefore"},
+  {p:"S + 宁可...也不...",ex:"宁可多走路，也不坐黑车",py:"nìngkě duō zǒulù, yě bù zuò hēichē",en:"I'd rather walk more than take an unlicensed taxi",note:"Would rather...than"},
+  {p:"S + 之所以...是因为...",ex:"他之所以成功，是因为努力",py:"tā zhī suǒyǐ chénggōng, shì yīnwèi nǔlì",en:"The reason he succeeded is because of hard work",note:"The reason...is because"},
+  {p:"无论...都...",ex:"无论多忙，都要休息",py:"wúlùn duō máng, dōu yào xiūxi",en:"No matter how busy, you must still rest",note:"No matter...always"},
+  {p:"既然...就...",ex:"既然来了，就好好玩吧",py:"jìrán lái le, jiù hǎohǎo wán ba",en:"Since you're here, just enjoy yourself",note:"Since/now that...then"},
+  {p:"S + 不禁 + V",ex:"她不禁笑了起来",py:"tā bùjīn xiào le qǐlái",en:"She couldn't help but smile",note:"Can't help but..."},
+],
+};
+const HSK_LEVELS={
+  1:{name:"Beginner",zh:"初级",color:"#3E7C59",desc:"~150 words · Basic survival phrases and daily life",badge:"⭐"},
+  2:{name:"Elementary",zh:"基础",color:"#3A6B8A",desc:"~300 words total · Simple conversations and common situations",badge:"⭐⭐"},
+  3:{name:"Intermediate",zh:"中级",color:"#B98A2F",desc:"~600 words total · Everyday topics and travel",badge:"⭐⭐⭐"},
+  4:{name:"Upper-Intermediate",zh:"中高级",color:"#C8372D",desc:"~1200 words total · Fluent communication",badge:"⭐⭐⭐⭐"},
+  5:{name:"Advanced",zh:"高级",color:"#2B2722",desc:"~2500 words total · Near-native proficiency",badge:"⭐⭐⭐⭐⭐"},
+};
+
+// ── HSK view ──────────────────────────────────────────────────────────
+function HSKView({state,setState}){
+  const[level,setLevel]=useState(1);
+  const[subView,setSubView]=useState('vocab'); // vocab | grammar
+  const[session,setSession]=useState(null);
+  const info=HSK_LEVELS[level];
+  const words=HSK[level]||[];
+
+  // Compute progress for this level
+  const mastered=words.filter((_,i)=>state.cards[getHskId(level,i)]?.lvl>=4).length;
+  const started=words.filter((_,i)=>state.cards[getHskId(level,i)]).length;
+  const due=words.filter((_,i)=>{const c=state.cards[getHskId(level,i)];return c&&c.due<=todayStr();}).length;
+  const newWords=words.filter((_,i)=>!state.cards[getHskId(level,i)]);
+
+  const startStudy=()=>{
+    // mix due + up to newPerDay new words
+    const dueQ=words.map((_,i)=>getHskId(level,i)).filter(id=>{const c=state.cards[id];return c&&c.due<=todayStr();});
+    const newQ=words.map((_,i)=>getHskId(level,i)).filter(id=>!state.cards[id]).slice(0,Math.min(10,newWords.length));
+    const q=[...dueQ,...newQ];
+    if(q.length)setSession(q.sort(()=>Math.random()-0.5).map(id=>({id})));
+  };
+  const practiceAll=()=>setSession(words.map((_,i)=>({id:getHskId(level,i)})).sort(()=>Math.random()-0.5));
+
+  if(session&&session!=="done")return <ReviewSession queue={session} state={state} setState={setState} onDone={()=>setSession("done")}/>;
+
+  return(<div style={{display:"flex",flexDirection:"column",gap:14}}>
+    {/* Level tabs */}
+    <div style={{display:"flex",gap:6}}>
+      {[1,2,3,4,5].map(lv=>{
+        const inf=HSK_LEVELS[lv];
+        const wds=HSK[lv]||[];
+        const prog=Math.round((wds.filter((_,i)=>state.cards[getHskId(lv,i)]?.lvl>=4).length/wds.length)*100);
+        return <button key={lv} onClick={()=>setLevel(lv)} style={{flex:1,background:level===lv?inf.color:C.card,color:level===lv?"#FFF8EE":C.inkSoft,border:`1.5px solid ${level===lv?inf.color:C.line}`,borderRadius:10,padding:"8px 0",fontFamily:UI,fontWeight:700,fontSize:13,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+          <span>HSK{lv}</span>
+          <div style={{width:"80%",height:3,background:level===lv?"rgba(255,255,255,0.3)":C.line,borderRadius:2}}>
+            <div style={{height:"100%",background:level===lv?"rgba(255,255,255,0.9)":inf.color,borderRadius:2,width:prog+"%"}}/>
+          </div>
+        </button>;
+      })}
+    </div>
+
+    {/* Level card */}
+    <div style={{background:info.color,borderRadius:16,padding:"18px 18px 16px",color:"#FFF8EE"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div>
+          <div style={{fontFamily:HAN,fontWeight:900,fontSize:28,lineHeight:1}}>{info.zh}</div>
+          <div style={{fontFamily:UI,fontWeight:700,fontSize:15,opacity:0.9}}>{info.name}</div>
+          <div style={{fontFamily:UI,fontSize:12,opacity:0.7,marginTop:3}}>{info.desc}</div>
+        </div>
+        <div style={{fontFamily:UI,fontSize:26}}>{info.badge}</div>
+      </div>
+      <div style={{display:"flex",gap:14,marginTop:14}}>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontFamily:HAN,fontWeight:900,fontSize:22}}>{started}</div>
+          <div style={{fontFamily:UI,fontSize:10,opacity:0.8}}>started</div>
+        </div>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontFamily:HAN,fontWeight:900,fontSize:22}}>{mastered}</div>
+          <div style={{fontFamily:UI,fontSize:10,opacity:0.8}}>mastered</div>
+        </div>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontFamily:HAN,fontWeight:900,fontSize:22}}>{due}</div>
+          <div style={{fontFamily:UI,fontSize:10,opacity:0.8}}>due today</div>
+        </div>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontFamily:HAN,fontWeight:900,fontSize:22}}>{newWords.length}</div>
+          <div style={{fontFamily:UI,fontSize:10,opacity:0.8}}>new</div>
+        </div>
+      </div>
+      <div style={{height:5,background:"rgba(255,255,255,0.2)",borderRadius:3,marginTop:12}}>
+        <div style={{height:"100%",background:"rgba(255,255,255,0.9)",borderRadius:3,width:Math.round((mastered/words.length)*100)+"%",transition:"width 0.4s"}}/>
+      </div>
+      <div style={{fontFamily:UI,fontSize:11,opacity:0.7,marginTop:4}}>{mastered}/{words.length} mastered</div>
+    </div>
+
+    {session==="done"&&<div className="pop" style={{background:C.jade,color:"#FFF8EE",borderRadius:12,padding:14,fontFamily:UI,fontWeight:700,textAlign:"center"}}>🎉 Session complete! 很好!</div>}
+
+    {/* Study buttons */}
+    <div style={{display:"flex",gap:8}}>
+      <button onClick={startStudy} disabled={!due&&!newWords.length} style={{flex:1,background:C.vermilion,color:"#FFF8EE",border:"none",borderRadius:12,padding:"12px 0",fontFamily:UI,fontWeight:700,fontSize:14,cursor:"pointer",opacity:!due&&!newWords.length?0.45:1}}>
+        {due+newWords.length>0?`Study (${due+Math.min(10,newWords.length)} cards)`:"All up to date"}
+      </button>
+      <button onClick={practiceAll} style={{flex:1,background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:"12px 0",fontFamily:UI,fontWeight:700,fontSize:14,cursor:"pointer",color:C.ink}}>
+        Shuffle all {words.length}
+      </button>
+    </div>
+
+    {/* Sub-view toggle */}
+    <div style={{display:"flex",background:C.paper,borderRadius:10,padding:3,gap:3}}>
+      {["vocab","grammar"].map(v=><button key={v} onClick={()=>setSubView(v)} style={{flex:1,background:subView===v?C.card:"transparent",border:"none",borderRadius:8,padding:"8px 0",fontFamily:UI,fontWeight:700,fontSize:14,cursor:"pointer",color:subView===v?C.ink:C.inkSoft,boxShadow:subView===v?"0 1px 3px rgba(0,0,0,0.08)":"none"}}>{v==="vocab"?"📖 Vocabulary":"✏️ Grammar"}</button>)}
+    </div>
+
+    {/* Vocabulary list */}
+    {subView==="vocab"&&<div style={{display:"flex",flexDirection:"column",gap:6}}>
+      {words.map((w,i)=>{
+        const id=getHskId(level,i);
+        const prog=state.cards[id];
+        const lvlNum=prog?.lvl||0;
+        return <div key={i} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:11,padding:"10px 12px",display:"flex",alignItems:"center",gap:10}}>
+          <SpeakBtn chinese={w.c} pinyin={w.p}/>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:HAN,fontWeight:700,fontSize:19,color:C.ink,lineHeight:1.2}}>{w.c}
+              <span style={{fontFamily:UI,fontWeight:700,fontSize:13,color:C.vermilion,marginLeft:6}}>{w.p}</span>
+            </div>
+            <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>{w.e}</div>
+          </div>
+          {prog&&<div style={{width:32,height:32,borderRadius:"50%",background:lvlNum>=4?C.jade:lvlNum>=2?C.gold:C.paper,border:`1.5px solid ${lvlNum>=4?C.jade:lvlNum>=2?C.gold:C.line}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:UI,fontWeight:700,fontSize:11,color:lvlNum>=2?"#FFF8EE":C.inkSoft,flexShrink:0}}>
+            {lvlNum>=4?"记":lvlNum}
+          </div>}
+        </div>;
+      })}
+    </div>}
+
+    {/* Grammar patterns */}
+    {subView==="grammar"&&<div style={{display:"flex",flexDirection:"column",gap:10}}>
+      <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft}}>Key grammar patterns at HSK {level} level</div>
+      {(HSK_GRAMMAR[level]||[]).map((g,i)=><div key={i} style={{background:C.card,border:`1.5px solid ${C.line}`,borderRadius:12,padding:14}}>
+        <div style={{fontFamily:'monospace',fontWeight:700,fontSize:15,color:info.color,marginBottom:8}}>{g.p}</div>
+        <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:4}}>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:HAN,fontWeight:700,fontSize:17,color:C.ink}}>{g.ex}</div>
+            <div style={{fontFamily:UI,fontSize:13,color:C.vermilion,fontWeight:700,marginTop:2}}>{g.py}</div>
+            <div style={{fontFamily:UI,fontSize:13,color:C.inkSoft,marginTop:1}}>{g.en}</div>
+          </div>
+          <button onClick={()=>speak(g.ex,g.py)} style={{background:C.paper,border:`1.5px solid ${C.line}`,borderRadius:"50%",width:38,height:38,fontSize:17,cursor:"pointer",flexShrink:0,marginTop:2}}>🔊</button>
+        </div>
+        <div style={{fontFamily:UI,fontSize:12,color:C.gold,borderTop:`1px solid ${C.line}`,paddingTop:6,marginTop:4}}>💡 {g.note}</div>
+      </div>)}
+    </div>}
+  </div>);
+}
+
+// ── App shell ─────────────────────────────────────────────────────────
+function App(){
+  const[tab,setTab]=useState("today"),[state,setState]=useState(null);
+  useEffect(()=>{setState(loadState());},[]);
+  if(!state)return <div style={{minHeight:"100vh",background:C.paper,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:UI,color:C.inkSoft}}>Loading…</div>;
+  const tabs=[{id:"today",zh:"今",label:"Today"},{id:"decks",zh:"词",label:"Decks"},{id:"quiz",zh:"测",label:"Quiz"},{id:"speak",zh:"说",label:"Speak"},{id:"trans",zh:"译",label:"Trans"},{id:"book",zh:"册",label:"Phrases"},{id:"hsk",zh:"级",label:"HSK"}];
+  return(<div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:580,height:"100%",display:"flex",flexDirection:"column",background:C.card,boxShadow:"0 0 40px rgba(0,0,0,0.08)"}}>
+    <header style={{flexShrink:0,borderBottom:`1.5px solid ${C.line}`,background:C.card}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 18px 10px"}}>
+      <Seal char="学" size={36} rotate={-4}/>
+      <div style={{flex:1}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:18,color:C.ink,lineHeight:1.1}}>路上中文</div>
+        <div style={{fontFamily:UI,fontSize:10,letterSpacing:1.5,color:C.inkSoft}}>MANDARIN FOR THE ROAD</div>
+      </div>
+      <LanternSVG size={32}/>
+      </div>
+    </header>
+    <main style={{flex:1,overflowY:"auto",padding:"16px 14px 16px",WebkitOverflowScrolling:"touch"}}>
+      {tab==="today"&&<TodayView state={state} setState={setState}/>}
+      {tab==="decks"&&<DecksView state={state} setState={setState}/>}
+      {tab==="quiz"&&<QuizView state={state} setState={setState}/>}
+      {tab==="speak"&&<SpeakView/>}
+      {tab==="trans"&&<TranslateView/>}
+      {tab==="book"&&<PhrasebookView/>}
+      {tab==="hsk"&&<HSKView state={state} setState={setState}/>}
+    </main>
+    <nav style={{flexShrink:0,background:C.card,borderTop:`1.5px solid ${C.line}`,zIndex:100}}>
+      <div style={{display:"flex",overflowX:"auto",padding:"6px 4px 12px",WebkitOverflowScrolling:"touch",justifyContent:"center"}}>
+      {tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:1,minWidth:52,flexShrink:0}}>
+        <div style={{fontFamily:HAN,fontWeight:900,fontSize:20,color:tab===t.id?"#FFF8EE":C.inkSoft,background:tab===t.id?C.vermilion:"transparent",width:32,height:32,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",transform:tab===t.id?"rotate(-4deg)":"none",transition:'all 0.2s'}}>{t.zh}</div>
+        <div style={{fontFamily:UI,fontSize:10,fontWeight:700,color:tab===t.id?C.ink:C.inkSoft}}>{t.label}</div>
+      </button>)}
+      </div>
+    </nav>
+    </div>);
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
